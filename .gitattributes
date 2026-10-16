@@ -1,0 +1,5 @@
+# Finais de linha consistentes (LF) entre Windows, Mac e Linux.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
