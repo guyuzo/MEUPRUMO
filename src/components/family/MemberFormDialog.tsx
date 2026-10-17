@@ -22,7 +22,7 @@ export function MemberFormDialog({
   const { remove: removeAvatar } = useAvatarMutations()
   const [name, setName] = useState(member?.full_name ?? '')
   const [relationship, setRelationship] = useState(member?.relationship ?? '')
-  const [color, setColor] = useState(member?.color ?? '#6366f1')
+  const [color, setColor] = useState(member?.color ?? '#1f6b56')
   const [error, setError] = useState<string>()
 
   const submit = async () => {

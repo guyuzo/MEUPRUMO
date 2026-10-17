@@ -2,44 +2,56 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Identidade Meu Prumo: Verde Prumo #0D4D3B, Verde Equilíbrio #1F6B56, Verde Suave #A7C4B3,
+ * Creme #F8F5EC, Dourado #C9A96E, Grafite #26323B. Pares de texto/fundo conferidos (WCAG AA ≥ 4,5).
+ */
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
 
-  --color-background: oklch(0.985 0.003 260);
-  --color-foreground: oklch(0.21 0.02 265);
-  --color-card: oklch(1 0 0);
-  --color-muted: oklch(0.96 0.005 260);
-  --color-muted-foreground: oklch(0.55 0.02 260);
-  --color-border: oklch(0.92 0.006 260);
-  --color-input: oklch(0.92 0.006 260);
-  --color-ring: oklch(0.6 0.15 160);
+  --color-background: #f8f5ec;
+  --color-foreground: #26323b;
+  --color-card: #fffdf8;
+  --color-muted: #efebe0;
+  --color-muted-foreground: #5e6a66;
+  --color-border: #e4dfd2;
+  --color-input: #ddd7c8;
+  --color-ring: #1f6b56;
 
-  --color-primary: oklch(0.6 0.15 160);
-  --color-primary-foreground: oklch(0.99 0 0);
-  --color-income: oklch(0.6 0.15 155);
-  --color-expense: oklch(0.6 0.2 25);
-  --color-destructive: oklch(0.58 0.22 27);
+  --color-primary: #0d4d3b;
+  --color-primary-foreground: #f8f5ec;
+  --color-accent: #c9a96e;
+  --color-income: #1f6b56;
+  --color-expense: #b42f33;
+  --color-destructive: #b42f33;
 
   /* Séries de gráfico (paleta validada p/ daltonismo): 1 = entradas, 2 = saídas */
   --color-series-1: #2a78d6;
   --color-series-2: #eb6834;
-  --color-chart-grid: oklch(0.93 0.004 260);
+  --color-chart-grid: #e9e4d8;
 
   --radius-lg: 0.75rem;
   --radius-md: 0.5rem;
 }
 
+/* Escuro: fundos esverdeados; o primário vira o Verde Suave com texto Verde Prumo (contraste 5,2). */
 .dark {
-  --color-background: oklch(0.17 0.01 265);
-  --color-foreground: oklch(0.96 0.005 260);
-  --color-card: oklch(0.21 0.012 265);
-  --color-muted: oklch(0.25 0.012 265);
-  --color-muted-foreground: oklch(0.7 0.015 260);
-  --color-border: oklch(0.3 0.012 265);
-  --color-input: oklch(0.3 0.012 265);
+  --color-background: #0f1513;
+  --color-foreground: #eef1ec;
+  --color-card: #161e1b;
+  --color-muted: #1f2925;
+  --color-muted-foreground: #9daaa4;
+  --color-border: #26322d;
+  --color-input: #2d3934;
+  --color-ring: #a7c4b3;
+  --color-primary: #a7c4b3;
+  --color-primary-foreground: #0d4d3b;
+  --color-income: #7cc4a0;
+  --color-expense: #f07a7d;
+  --color-destructive: #f07a7d;
   --color-series-1: #3987e5;
   --color-series-2: #d95926;
-  --color-chart-grid: oklch(0.27 0.01 265);
+  --color-chart-grid: #222c28;
 }
 
 body {

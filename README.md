@@ -1,7 +1,7 @@
-# Finança Fácil
+# Meu Prumo
 
 App de organização financeira pessoal e familiar. React 19 + TanStack Router/Query + Tailwind v4 + Supabase.
-Nome provisório em `src/config/app.ts`.
+Nome definido em `src/config/app.ts`.
 
 ## Funcionalidades
 

@@ -3,6 +3,7 @@ import { Menu, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Suspense, useEffect, useState } from 'react'
 import { AppSidebar } from '@/components/shared/AppSidebar'
+import { Logo } from '@/components/shared/Logo'
 import { Button } from '@/components/ui/button'
 import { householdQuery, useHousehold } from '@/hooks/useHousehold'
 import { materialize } from '@/hooks/useRecurrences'
@@ -48,6 +49,7 @@ function AuthenticatedLayout() {
           <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} aria-label="Abrir menu">
             <Menu />
           </Button>
+          <Logo className="ml-2 h-8" />
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 p-4 md:p-8 print:max-w-none print:p-0">
           <Suspense fallback={<FullPageSpinner />}>

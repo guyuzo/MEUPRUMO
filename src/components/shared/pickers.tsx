@@ -30,7 +30,9 @@ export function EmojiPicker({ value, onChange }: { value: string; onChange: (emo
   )
 }
 
+// Cores da marca primeiro (Verde Prumo, Verde Equilíbrio, Dourado), depois a paleta geral.
 const COLORS = [
+  '#0d4d3b', '#1f6b56', '#c9a96e',
   '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#10b981', '#14b8a6',
   '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#64748b',
 ]

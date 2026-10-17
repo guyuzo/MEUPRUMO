@@ -7,6 +7,11 @@ import { supabase } from '@/lib/supabase'
 import { initTheme } from '@/lib/theme'
 import { RouteError } from './routes/__root'
 import { routeTree } from './routeTree.gen'
+// Poppins (identidade da marca), só o subconjunto latino: cobre os acentos do português.
+import '@fontsource/poppins/latin-400.css'
+import '@fontsource/poppins/latin-500.css'
+import '@fontsource/poppins/latin-600.css'
+import '@fontsource/poppins/latin-700.css'
 import './index.css'
 
 initTheme()

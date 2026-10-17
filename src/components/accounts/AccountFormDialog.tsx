@@ -50,7 +50,7 @@ function AccountFormDialogContent({
     bank: account?.bank ?? '',
     branch: account?.branch ?? '',
     account_number: account?.account_number ?? '',
-    color: account?.color ?? '#6366f1',
+    color: account?.color ?? '#1f6b56',
     initial_balance: account?.initial_balance ?? 0,
     initial_balance_date: account?.initial_balance_date ?? today,
   }

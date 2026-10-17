@@ -16,9 +16,9 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
-import { APP_NAME } from '@/config/app'
 import { useQueryClient } from '@tanstack/react-query'
 import { Avatar } from '@/components/family/Avatar'
+import { Logo } from '@/components/shared/Logo'
 import { ThemeToggle } from '@/components/shared/ThemeToggle'
 import { Dropdown } from '@/components/ui/dropdown'
 import { useAvatarUrls } from '@/hooks/useAvatars'
@@ -79,9 +79,8 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <nav className="flex h-full flex-col gap-1 p-3">
-      <div className="mb-4 flex items-center gap-2 px-2 py-2 text-primary">
-        <Wallet className="size-5" />
-        <span className="font-semibold text-foreground">{APP_NAME}</span>
+      <div className="mb-4 px-2 py-2">
+        <Logo className="h-10" />
       </div>
       {visible.map(({ to, label, icon: Icon }) => (
         <Link
