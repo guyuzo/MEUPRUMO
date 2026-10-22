@@ -23,7 +23,6 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { BankLogo } from '@/components/cards/BankLogo'
 import { CardFormDialog } from '@/components/cards/CardFormDialog'
-import { equalSplit, SplitEditor, splitsTotal, type SplitDraft } from '@/components/family/MemberSplitField'
 import { CategoryPicker } from '@/components/planning/CategoryPicker'
 import { Dropdown } from '@/components/ui/dropdown'
 import { MoneyInput } from '@/components/shared/MoneyInput'
@@ -145,14 +144,7 @@ function TransactionFormSheetContent({
   const isParcel = Boolean(transaction?.installment_plan_id)
   const defaultMode = modeOf(transaction?.kind ?? defaults?.kind)
 
-  // Rascunho da divisão vale só para a transação aberta; sem rascunho, mostra o que está salvo.
-  const draftKey = transaction?.id ?? 'new'
-  const [splitDraft, setSplitDraft] = useState<{ key: string; splits: SplitDraft[] | null }>()
-  const savedSplits = existingSplits.length
-    ? existingSplits.map((s) => ({ member_id: s.member_id, percentage: Number(s.percentage) }))
-    : null
-  const splits = splitDraft?.key === draftKey ? splitDraft.splits : savedSplits
-  const setSplits = (next: SplitDraft[] | null) => setSplitDraft({ key: draftKey, splits: next })
+  const savedSplits = existingSplits.length > 0
 
   // Valores iniciais: usados como "values" e para limpar o form ao fechar.
   const initialValues: FormInput = {
@@ -188,7 +180,6 @@ function TransactionFormSheetContent({
   const { errors, isSubmitting } = form.formState
   const close = () => {
     form.reset(initialValues)
-    setSplitDraft(undefined)
     onClose()
   }
 
@@ -226,11 +217,6 @@ function TransactionFormSheetContent({
 
   const onSubmit = form.handleSubmit(async (v) => {
     const kind = kindOf(v)
-    const useSplitsNow = v.mode !== 'transfer' && splits !== null
-    if (useSplitsNow && (splits.length === 0 || splitsTotal(splits) !== 100)) {
-      form.setError('root', { message: 'A divisão precisa somar 100%.' })
-      return
-    }
     const credit = kind === 'card_purchase'
     // Só grava a fatura escolhida se for diferente da automática.
     const invoiceMonth =
@@ -251,13 +237,13 @@ function TransactionFormSheetContent({
       subcategory_id: v.mode === 'transfer' ? null : v.subcategory_id,
       bank_account_id: credit ? null : v.bank_account_id,
       destination_account_id: v.mode === 'transfer' ? v.destination_account_id : null,
-      household_member_id: useSplitsNow || v.mode === 'transfer' ? null : v.household_member_id,
+      household_member_id: v.mode === 'transfer' ? null : v.household_member_id,
       payment_method: v.mode === 'transfer' ? 'transfer' : v.payment_method,
       card_id: credit ? v.card_id : null,
       invoice_month: invoiceMonth,
       installments: credit && v.is_installment && !transaction ? v.installments : 1,
-      // Só chama a RPC quando há divisão nova ou havia uma salva para remover.
-      splits: useSplitsNow ? splits : savedSplits ? null : undefined,
+      // A divisão entre pessoas saiu do formulário: uma antiga, se houver, é removida ao salvar.
+      splits: savedSplits ? null : undefined,
     })
     close()
   })
@@ -547,23 +533,16 @@ function TransactionFormSheetContent({
               </FormRow>
 
               {members.length > 1 && (
-                <>
-                  <FormRow icon={User} label="Corresponde" htmlFor="tx-member">
-                    {splits === null && (
-                      <RowSelect id="tx-member" {...form.register('household_member_id')}>
-                        <option value="">—</option>
-                        {members.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.full_name}
-                          </option>
-                        ))}
-                      </RowSelect>
-                    )}
-                    <span className="shrink-0 text-sm text-muted-foreground">Dividir?</span>
-                    <Toggle checked={splits !== null} onChange={(on) => setSplits(on ? equalSplit(members) : null)} label="Dividir entre pessoas" />
-                  </FormRow>
-                  {splits !== null && <SplitEditor members={members} splits={splits} onChange={setSplits} amount={amount} />}
-                </>
+                <FormRow icon={User} label="De quem é" htmlFor="tx-member">
+                  <RowSelect id="tx-member" {...form.register('household_member_id')}>
+                    <option value="">Casa</option>
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id} data-color={m.color}>
+                        {m.full_name}
+                      </option>
+                    ))}
+                  </RowSelect>
+                </FormRow>
               )}
             </>
           )}

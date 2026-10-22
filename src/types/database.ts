@@ -287,6 +287,8 @@ export interface WishlistItem {
   url: string | null
   priority: 1 | 2 | 3
   notes: string | null
+  /** Pessoa da casa dona do desejo; null = da casa toda. */
+  member_id: string | null
   purchased_at: string | null
   sort_order: number
   created_at: string

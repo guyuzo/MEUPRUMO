@@ -199,8 +199,8 @@ function RecurrenceFormDialogContent({
             <Select id="rec-cat" {...form.register('category_id', { onChange: () => form.setValue('subcategory_id', '') })}>
               <option value="">Sem categoria</option>
               {categoryOptions.map((c) => (
-                <option key={c.id} value={c.id} data-color={c.color}>
-                  {c.emoji} {c.name}
+                <option key={c.id} value={c.id} data-color={c.color} data-icon={c.emoji}>
+                  {c.name}
                 </option>
               ))}
             </Select>

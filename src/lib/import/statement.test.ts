@@ -1,5 +1,49 @@
 import { describe, expect, it } from 'vitest'
-import { classifyLine, normalizeDescription, parseAmount, parseCsv, parseDate, parseOfx, parseStatement } from './statement'
+import { classifyLine, normalizeDescription, parseAmount, parseCsv, parseDate, parseOfx, parsePdfLines, parseStatement } from './statement'
+
+describe('parsePdfLines', () => {
+  const ref = '2026-11-01'
+
+  it('lê linhas com data no começo e valor no fim (vários formatos)', () => {
+    const { lines } = parsePdfLines(
+      [
+        'Resumo da fatura',
+        '05/10 IFOOD *RESTAURANTE 45,90',
+        '06 OUT UBER *TRIP R$ 23,40',
+        '07/10/2026 AMAZON MARKETPLACE PARC 02/10 1.234,56',
+        '12 NOV NETFLIX.COM 55,90',
+        '15/10 PAGAMENTO RECEBIDO - 2.000,00',
+        '18/10 ESTORNO LOJA X 30,00-',
+      ],
+      ref,
+    )
+    expect(lines.map((l) => [l.date, l.description, l.amount])).toEqual([
+      ['2026-10-05', 'IFOOD *RESTAURANTE', 4590],
+      ['2026-10-06', 'UBER *TRIP', 2340],
+      ['2026-10-07', 'AMAZON MARKETPLACE PARC 02/10', 123456],
+      ['2026-11-12', 'NETFLIX.COM', 5590],
+      ['2026-10-15', 'PAGAMENTO RECEBIDO', -200000],
+      ['2026-10-18', 'ESTORNO LOJA X', -3000],
+    ])
+    expect(classifyLine(lines[4])).toBe('payment')
+    expect(classifyLine(lines[5])).toBe('refund')
+  })
+
+  it('ignora resumo, linhas sem data e não confunde palavra com mês', () => {
+    const { lines } = parsePdfLines(
+      ['Total da fatura 3.450,00', '10/11 Vencimento 3.450,00', 'Limite disponível 1.000,00', '05 MARKETPLACE 10,00', '20/10 Café 8,50'],
+      ref,
+    )
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toMatchObject({ date: '2026-10-20', description: 'Café', amount: 850 })
+  })
+
+  it('linhas iguais ganham ids diferentes; sem nada, avisa', () => {
+    const { lines } = parsePdfLines(['01/10 CAFE 5,00', '01/10 CAFE 5,00'], ref)
+    expect(new Set(lines.map((l) => l.externalId)).size).toBe(2)
+    expect(parsePdfLines(['nada aqui'], ref).warnings[0]).toMatch(/Não encontrei/)
+  })
+})
 
 describe('parseDate', () => {
   it.each([

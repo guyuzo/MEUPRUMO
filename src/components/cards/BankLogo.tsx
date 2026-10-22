@@ -1,5 +1,5 @@
 import { CreditCard } from 'lucide-react'
-import { bankInitials, findBank } from '@/lib/banks'
+import { bankInitials, bankLogoImgClass, findBank } from '@/lib/banks'
 import { cn } from '@/lib/utils'
 
 const SIZES = { sm: 'size-5 text-[9px]', md: 'size-7 text-[10px]', lg: 'size-10 text-xs' } as const
@@ -22,8 +22,12 @@ export function BankLogo({
 
   if (known?.logo) {
     return (
-      <span className={cn(base, 'border border-border bg-white')} aria-hidden>
-        <img src={known.logo} alt="" className="size-full object-contain" loading="lazy" />
+      <span
+        className={cn(base, !known.appIcon && 'border border-border')}
+        style={{ backgroundColor: known.appIcon ? known.color : '#fff' }}
+        aria-hidden
+      >
+        <img src={known.logo} alt="" className={bankLogoImgClass(known)} loading="lazy" />
       </span>
     )
   }

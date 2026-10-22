@@ -32,7 +32,6 @@ export function useAccounts({ includeArchived = false } = {}) {
 export interface AccountInput {
   name: string
   bank: string | null
-  branch: string | null
   account_number: string | null
   type: AccountType
   color: string

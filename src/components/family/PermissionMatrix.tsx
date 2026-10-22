@@ -29,7 +29,8 @@ export function PermissionMatrix({
         </tr>
       </thead>
       <tbody className="divide-y divide-border">
-        {MODULES.map((m) => (
+        {/* Investimentos saiu do app; a permissão continua no banco, só não aparece. */}
+        {MODULES.filter((m) => m !== 'investments').map((m) => (
           <tr key={m}>
             <td className="py-2">{MODULE_LABEL[m]}</td>
             <td className="text-center">

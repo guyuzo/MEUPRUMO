@@ -142,11 +142,7 @@ function AccountCard({
           color={account.color}
           title={account.name}
           subtitle={ACCOUNT_TYPE_LABEL[account.type]}
-          number={
-            [account.branch && `Ag ${account.branch}`, account.account_number && `•••• ${account.account_number.slice(-4)}`]
-              .filter(Boolean)
-              .join(' · ') || null
-          }
+          number={account.account_number ? `•••• ${account.account_number.slice(-4)}` : null}
           fallbackIcon={account.type === 'cash' ? Wallet : Landmark}
         />
       </Link>

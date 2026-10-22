@@ -283,14 +283,14 @@ export function Dropdown({
                 onClick={() => choose(option)}
                 className={cn(
                   'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm',
-                  option.indent && 'pl-[3.25rem]',
+                  option.indent && (option.icon ? 'pl-9' : 'pl-[3.25rem]'),
                   index === active && 'bg-muted',
                   isSelected && 'font-medium',
                   option.disabled && 'cursor-not-allowed opacity-50',
                 )}
               >
-                {/* Itens recuados (subcategorias) ficam só com o texto: o ícone já está no grupo acima. */}
-                {!option.indent && <OptionIcon option={option} />}
+                {/* Recuados (subcategorias) mostram o ícone próprio, menor; sem ícone, só o texto. */}
+                {option.indent ? option.icon && <OptionIcon option={option} size="sm" /> : <OptionIcon option={option} />}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate">{option.label}</span>
                   {option.description && <span className="block truncate text-xs text-muted-foreground">{option.description}</span>}

@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { bankInitials, findBank } from '@/lib/banks'
+import { bankInitials, bankLogoImgClass, findBank } from '@/lib/banks'
 import { cn } from '@/lib/utils'
 
 /** Texto escuro sobre cores claras (ex.: Will Bank, Nomad); branco nas demais. */
@@ -62,8 +62,12 @@ export function BankCardArt({
           {subtitle && <p className="truncate text-xs opacity-80">{subtitle}</p>}
         </div>
         {known?.logo ? (
-          <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white" aria-hidden>
-            <img src={known.logo} alt="" className="size-full object-contain" loading="lazy" />
+          <span
+            className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+            style={{ backgroundColor: known.appIcon ? known.color : '#fff' }}
+            aria-hidden
+          >
+            <img src={known.logo} alt="" className={bankLogoImgClass(known)} loading="lazy" />
           </span>
         ) : bank?.trim() ? (
           <span

@@ -3,14 +3,14 @@ import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { BankLogo } from '@/components/cards/BankLogo'
+import { BankPicker } from '@/components/cards/BankPicker'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { ColorPicker } from '@/components/shared/pickers'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
-import { Dropdown, type DropdownOption } from '@/components/ui/dropdown'
 import { FieldError, Input, Label } from '@/components/ui/input'
 import { useCardMutations } from '@/hooks/useCards'
-import { BANKS, findBank } from '@/lib/banks'
+import { findBank, type Bank } from '@/lib/banks'
 import type { Card } from '@/types/database'
 
 const day = z.coerce.number({ invalid_type_error: 'Dia inválido' }).int().min(1, 'Entre 1 e 31').max(31, 'Entre 1 e 31')
@@ -35,17 +35,6 @@ const schema = z.object({
 type FormInput = z.input<typeof schema>
 type FormOutput = z.output<typeof schema>
 
-const OTHER = '__other'
-const BANK_OPTIONS: DropdownOption[] = [
-  ...BANKS.map((b) => ({
-    value: b.slug,
-    label: b.name,
-    keywords: b.aliases?.join(' '),
-    icon: (size: 'sm' | 'md') => <BankLogo bank={b.name} size={size} />,
-  })),
-  { value: OTHER, label: 'Outro banco', description: 'Digitar o nome' },
-]
-
 function CardFormDialogContent({ open, onClose, card }: { open: boolean; onClose: () => void; card?: Card }) {
   const { saveCard } = useCardMutations()
   const initialValues: FormInput = {
@@ -67,14 +56,11 @@ function CardFormDialogContent({ open, onClose, card }: { open: boolean; onClose
   const bank = form.watch('bank') ?? ''
   const color = form.watch('color')
 
-  const chooseBank = (value: string) => {
-    if (value === OTHER) {
-      setOtherBank(true)
-      form.setValue('bank', '', { shouldDirty: true })
-      return
-    }
-    const picked = BANKS.find((b) => b.slug === value)
-    if (!picked) return
+  const chooseOther = () => {
+    setOtherBank(true)
+    form.setValue('bank', '', { shouldDirty: true })
+  }
+  const chooseBank = (picked: Bank) => {
     setOtherBank(false)
     form.setValue('bank', picked.name, { shouldDirty: true })
     // A cor acompanha o banco, a menos que o usuário já tenha escolhido outra.
@@ -103,24 +89,14 @@ function CardFormDialogContent({ open, onClose, card }: { open: boolean; onClose
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="card-bank">Banco</Label>
-            <Dropdown
+            <BankPicker
               id="card-bank"
-              value={otherBank ? OTHER : (findBank(bank)?.slug ?? '')}
-              onChange={chooseBank}
-              options={BANK_OPTIONS}
-              placeholder="Escolha o banco"
-              searchable
+              value={bank}
+              otherBank={otherBank}
+              onPick={chooseBank}
+              onOther={chooseOther}
+              otherInputProps={{ autoFocus: !card?.bank, ...form.register('bank') }}
             />
-            {otherBank && (
-              <Input
-                id="card-bank-other"
-                aria-label="Nome do banco"
-                placeholder="Nome do banco"
-                className="mt-2"
-                autoFocus={!card?.bank}
-                {...form.register('bank')}
-              />
-            )}
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="card-name">Apelido</Label>

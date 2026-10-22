@@ -11,6 +11,7 @@ import {
   type Ref,
   type SelectHTMLAttributes,
 } from 'react'
+import { CategoryIcon } from '@/components/planning/CategoryIcon'
 import { Dropdown, type DropdownOption } from '@/components/ui/dropdown'
 
 type OptionProps = {
@@ -19,6 +20,8 @@ type OptionProps = {
   disabled?: boolean
   'data-color'?: string
   'data-description'?: string
+  /** Ícone de categoria (valor salvo na categoria), mostrado na cor de data-color. */
+  'data-icon'?: string
 }
 
 // "🏠 Moradia" → emoji separado do texto, para mostrar o emoji num círculo.
@@ -45,11 +48,14 @@ function optionsFrom(children: ReactNode): DropdownOption[] {
     const props = child.props as OptionProps
     const text = textOf(props.children).trim()
     const match = text.match(LEADING_EMOJI)
+    const icon = props['data-icon']
+    const color = props['data-color']
     out.push({
       value: String(props.value ?? text),
       label: match ? match[2] : text,
       emoji: match?.[1],
-      color: props['data-color'],
+      icon: icon ? (size) => <CategoryIcon icon={icon} color={color} size={size === 'md' ? 'sm' : 'xs'} /> : undefined,
+      color,
       description: props['data-description'],
       disabled: props.disabled,
     })

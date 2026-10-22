@@ -70,6 +70,7 @@ export interface ImportRow {
   external_id: string
   category_id: string | null
   subcategory_id: string | null
+  household_member_id: string | null
 }
 
 export function useImportBatches(cardId: string | undefined) {

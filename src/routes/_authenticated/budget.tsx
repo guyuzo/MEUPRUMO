@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { AlertTriangle, ChevronDown, Copy, Settings2 } from 'lucide-react'
 import { useState } from 'react'
 import { z } from 'zod'
+import { CategoryIcon, SubcategoryIcon } from '@/components/planning/CategoryIcon'
 import { PageHeader, ProgressBar } from '@/components/shared/layout'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { MonthPicker } from '@/components/shared/pickers'
@@ -162,9 +163,7 @@ function BudgetRow({
           aria-expanded={hasSubs ? expanded : undefined}
           className="flex min-w-0 flex-1 basis-full items-center gap-3 text-left sm:basis-auto"
         >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full text-lg" style={{ backgroundColor: `${category.color}26` }}>
-            {category.emoji}
-          </span>
+          <CategoryIcon icon={category.emoji} color={category.color} size="lg" />
           <span className="min-w-0 flex-1">
             <span className="block truncate font-medium">{category.name}</span>
             <SpendLine spent={spent} budget={budget} />
@@ -196,6 +195,7 @@ function BudgetRow({
             const subBudget = budgets?.bySubcategory.get(sub.id) ?? 0
             return (
               <div key={sub.id} className="flex items-center gap-3">
+                <SubcategoryIcon name={sub.name} own={sub.emoji} categoryIcon={category.emoji} color={category.color} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm">{sub.name}</p>
                   <SpendLine spent={spent == null ? null : Math.max(0, subSpent.get(sub.id) ?? 0)} budget={subBudget} />

@@ -11,41 +11,63 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { useAccounts } from '@/hooks/useAccounts'
+import { useMembers } from '@/hooks/useFamily'
 import { usePermission } from '@/hooks/useHousehold'
 import { useCategories } from '@/hooks/usePlanning'
 import { useTransactions } from '@/hooks/useTransactions'
 import { currentMonthKey, isMonthKey } from '@/lib/dates'
 import { computeTotals } from '@/lib/finance/totals'
+import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types/database'
 
-const searchSchema = z.object({
+export const transactionsSearchSchema = z.object({
   month: z.string().refine(isMonthKey).catch(currentMonthKey).default(currentMonthKey),
   account: z.string().optional().catch(undefined),
   category: z.string().optional().catch(undefined),
+  member: z.string().optional().catch(undefined),
   status: z.enum(['pending', 'paid']).optional().catch(undefined),
   direction: z.enum(['inflow', 'outflow', 'transfer']).optional().catch(undefined),
   q: z.string().optional().catch(undefined),
 })
 
 export const Route = createFileRoute('/_authenticated/transactions')({
-  validateSearch: searchSchema,
-  component: TransactionsPage,
+  validateSearch: transactionsSearchSchema,
+  component: ExpensesPage,
 })
 
-type Search = z.infer<typeof searchSchema>
+export type TransactionsSearch = z.infer<typeof transactionsSearchSchema>
 
 // Estornos têm formulário próprio; compras no cartão usam o formulário de lançamento.
 const isCardEntry = (tx?: Transaction) => tx?.kind === 'card_refund'
 
-function TransactionsPage() {
+function ExpensesPage() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
+  return (
+    <TransactionsScreen
+      scope="expenses"
+      search={search}
+      setSearch={(patch) => navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true })}
+    />
+  )
+}
+
+/** Lista de lançamentos de um mês: Despesas (saídas e transferências) ou Receitas (ganhos). */
+export function TransactionsScreen({
+  scope,
+  search,
+  setSearch,
+}: {
+  scope: 'expenses' | 'income'
+  search: TransactionsSearch
+  setSearch: (patch: Partial<TransactionsSearch>) => void
+}) {
+  type Search = TransactionsSearch
   const canEdit = usePermission('transactions', 'edit')
   const accounts = useAccounts().data ?? []
   const categories = useCategories().data ?? []
-
-  const setSearch = (patch: Partial<Search>) =>
-    navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true })
+  const members = useMembers().data ?? []
+  const isIncome = scope === 'income'
 
   // Busca digitada aplica ao parar de digitar.
   const [term, setTerm] = useState(search.q ?? '')
@@ -62,8 +84,10 @@ function TransactionsPage() {
     accountId: search.account,
     categoryId: search.category,
     status: search.status,
-    direction: search.direction,
+    direction: isIncome ? undefined : search.direction,
     search: search.q,
+    scope,
+    memberId: search.member,
   })
   const rows = transactions.data ?? []
 
@@ -73,14 +97,16 @@ function TransactionsPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Transações</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{isIncome ? 'Receitas' : 'Despesas'}</h1>
         {canEdit && (
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setImportOpen(true)}>
-              <FileUp /> Importar fatura
-            </Button>
+            {!isIncome && (
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <FileUp /> Importar fatura
+              </Button>
+            )}
             <Button onClick={() => setSheet({ open: true })}>
-              <Plus /> Nova transação
+              <Plus /> {isIncome ? 'Nova receita' : 'Nova despesa'}
             </Button>
           </div>
         )}
@@ -93,7 +119,7 @@ function TransactionsPage() {
 
       <TotalsBar totals={computeTotals(rows, search.account)} />
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className={cn('grid gap-2 sm:grid-cols-2', isIncome ? 'lg:grid-cols-5' : 'lg:grid-cols-6')}>
         <div className="relative lg:col-span-2">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -104,15 +130,26 @@ function TransactionsPage() {
             className="pl-9"
           />
         </div>
-        <Select
-          aria-label="Tipo"
-          value={search.direction ?? ''}
-          onChange={(e) => setSearch({ direction: (e.target.value || undefined) as Search['direction'] })}
-        >
-          <option value="">Todos os tipos</option>
-          <option value="inflow">Entradas</option>
-          <option value="outflow">Saídas</option>
-          <option value="transfer">Transferências</option>
+        {!isIncome && (
+          <Select
+            aria-label="Tipo"
+            value={search.direction ?? ''}
+            onChange={(e) => setSearch({ direction: (e.target.value || undefined) as Search['direction'] })}
+          >
+            <option value="">Despesas e transferências</option>
+            <option value="outflow">Só despesas</option>
+            <option value="transfer">Só transferências</option>
+            <option value="inflow">Estornos</option>
+          </Select>
+        )}
+        <Select aria-label="Pessoa" value={search.member ?? ''} onChange={(e) => setSearch({ member: e.target.value || undefined })}>
+          <option value="">Todas as pessoas</option>
+          {members.map((m) => (
+            <option key={m.id} value={m.id} data-color={m.color}>
+              {m.full_name}
+            </option>
+          ))}
+          <option value="none">Casa (sem pessoa)</option>
         </Select>
         <Select
           aria-label="Conta"
@@ -132,9 +169,9 @@ function TransactionsPage() {
           onChange={(e) => setSearch({ category: e.target.value || undefined })}
         >
           <option value="">Todas as categorias</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id} data-color={c.color}>
-              {c.emoji} {c.name}
+          {categories.filter((c) => c.kind === (isIncome ? 'income' : 'expense')).map((c) => (
+            <option key={c.id} value={c.id} data-color={c.color} data-icon={c.emoji}>
+              {c.name}
             </option>
           ))}
         </Select>
@@ -174,7 +211,7 @@ function TransactionsPage() {
       <TransactionFormSheet
         open={sheet.open && !isCardEntry(sheet.tx)}
         transaction={sheet.tx}
-        defaults={{ bank_account_id: search.account }}
+        defaults={{ bank_account_id: search.account, ...(isIncome ? { kind: 'income' as const } : {}) }}
         onClose={() => setSheet({ open: false })}
       />
       <CardPurchaseSheet

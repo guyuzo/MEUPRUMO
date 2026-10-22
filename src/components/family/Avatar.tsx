@@ -4,7 +4,7 @@ import { useAvatarMutations } from '@/hooks/useAvatars'
 import { cn } from '@/lib/utils'
 import type { HouseholdMember } from '@/types/database'
 
-const SIZES = { sm: 'size-7 text-xs', md: 'size-10 text-sm', lg: 'size-20 text-2xl' } as const
+const SIZES = { sm: 'size-7 text-xs', md: 'size-10 text-sm', lg: 'size-20 text-2xl', xl: 'size-28 text-4xl' } as const
 
 /** Foto da pessoa ou, sem foto, a inicial na cor dela. */
 export function Avatar({
@@ -59,8 +59,13 @@ export function AvatarUpload({
         className="group relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Avatar member={member} url={url} size={size} className={cn(upload.isPending && 'opacity-50')} />
-        <span className="absolute -bottom-0.5 -right-0.5 flex size-5 items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground opacity-90 group-hover:opacity-100">
-          <Camera className="size-3" />
+        <span
+          className={cn(
+            'absolute flex items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground opacity-90 group-hover:opacity-100',
+            size === 'xl' || size === 'lg' ? 'bottom-0.5 right-0.5 size-8' : '-bottom-0.5 -right-0.5 size-5',
+          )}
+        >
+          <Camera className={size === 'xl' || size === 'lg' ? 'size-4' : 'size-3'} />
         </span>
       </button>
       <input

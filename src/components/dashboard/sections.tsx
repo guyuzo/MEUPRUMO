@@ -1,9 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CreditCard } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CreditCard } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Card, CardTitle } from '@/components/ui/card'
-import type { CategoryWithSubs } from '@/hooks/usePlanning'
 import type { MonthSummary } from '@/lib/finance/summary'
 import { formatCents } from '@/lib/money'
 import { cn } from '@/lib/utils'
@@ -91,79 +90,6 @@ export function Breakdown({ summary }: { summary: MonthSummary }) {
 }
 
 /** Orçamento × realizado por categoria de despesa. */
-export function BudgetProgress({
-  categories,
-  spending,
-  budgets,
-  month,
-}: {
-  categories: CategoryWithSubs[]
-  spending: Map<string | null, number>
-  budgets?: Map<string, number>
-  month: string
-}) {
-  const rows = categories
-    .filter((c) => c.kind === 'expense')
-    .map((c) => ({ category: c, spent: Math.max(0, spending.get(c.id) ?? 0), budget: budgets?.get(c.id) ?? 0 }))
-    .filter((r) => r.spent > 0 || r.budget > 0)
-    .sort((a, b) => b.spent - a.spent)
-  const uncategorized = Math.max(0, spending.get(null) ?? 0)
-
-  return (
-    <Card className="space-y-4">
-      <div className="flex items-center justify-between">
-        <CardTitle>Gastos por categoria</CardTitle>
-        <Link to="/budget" search={{ month }} className="text-xs text-primary hover:underline py-3">
-          Orçamento
-        </Link>
-      </div>
-      {rows.length === 0 && uncategorized === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">Nenhum gasto neste mês.</p>
-      ) : (
-        <ul className="space-y-3">
-          {rows.slice(0, 8).map(({ category, spent, budget }) => {
-            const pct = budget > 0 ? (spent / budget) * 100 : 0
-            const over = budget > 0 && spent > budget
-            return (
-              <li key={category.id}>
-                <div className="flex items-baseline justify-between gap-2 text-sm">
-                  <span className="truncate">
-                    {category.emoji} {category.name}
-                  </span>
-                  <span className="shrink-0 tabular-nums">
-                    {formatCents(spent)}
-                    {budget > 0 && <span className="text-xs text-muted-foreground"> / {formatCents(budget)}</span>}
-                  </span>
-                </div>
-                {budget > 0 && (
-                  <>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className={cn('h-full rounded-full', over ? 'bg-destructive' : 'bg-[var(--color-series-1)]')}
-                        style={{ width: `${Math.min(100, pct)}%` }}
-                      />
-                    </div>
-                    {over && (
-                      <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
-                        <AlertTriangle className="size-3" /> {formatCents(spent - budget)} acima do orçamento
-                      </p>
-                    )}
-                  </>
-                )}
-              </li>
-            )
-          })}
-          {uncategorized > 0 && (
-            <li className="flex justify-between text-sm text-muted-foreground">
-              <span>Sem categoria</span>
-              <span className="tabular-nums">{formatCents(uncategorized)}</span>
-            </li>
-          )}
-        </ul>
-      )}
-    </Card>
-  )
-}
 
 interface Upcoming {
   key: string

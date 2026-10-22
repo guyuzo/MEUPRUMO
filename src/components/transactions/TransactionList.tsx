@@ -1,6 +1,7 @@
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ArrowLeftRight, CheckCircle2, Circle } from 'lucide-react'
+import { ArrowLeftRight, CheckCircle2, Circle, Tag } from 'lucide-react'
+import { CategoryIcon } from '@/components/planning/CategoryIcon'
 import { Card } from '@/components/ui/card'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useCards } from '@/hooks/useCards'
@@ -117,12 +118,13 @@ export function TransactionList({
                     onClick={() => onSelect(tx)}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
-                    <span
-                      className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-base"
-                      style={category ? { backgroundColor: `${category.color}22` } : undefined}
-                    >
-                      {isTransfer ? <ArrowLeftRight className="size-4" /> : (category?.emoji ?? '•')}
-                    </span>
+                    {isTransfer || !category ? (
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                        {isTransfer ? <ArrowLeftRight className="size-4" strokeWidth={1.75} /> : <Tag className="size-4" strokeWidth={1.75} />}
+                      </span>
+                    ) : (
+                      <CategoryIcon icon={category.emoji} color={category.color} />
+                    )}
                     <span className="min-w-0 flex-1">
                       {/* Celular: até 2 linhas (a coluna é estreita); desktop: 1 linha. */}
                       <span className="line-clamp-2 break-words text-sm font-medium sm:line-clamp-1">{tx.description}</span>

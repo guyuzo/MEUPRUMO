@@ -6,7 +6,8 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { CumulativeLineChart, FLOW_SERIES, Legend } from '@/components/charts/charts'
 import { GettingStarted } from '@/components/dashboard/GettingStarted'
-import { Breakdown, BudgetProgress, StatTile, UpcomingList } from '@/components/dashboard/sections'
+import { CategoryDonut } from '@/components/dashboard/CategoryDonut'
+import { Breakdown, StatTile, UpcomingList } from '@/components/dashboard/sections'
 import { MonthPicker } from '@/components/shared/pickers'
 import { TransactionFormSheet } from '@/components/transactions/TransactionFormSheet'
 import { Button } from '@/components/ui/button'
@@ -135,8 +136,9 @@ function DashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <BudgetProgress
+        <CategoryDonut
           categories={categories}
+          rows={rows}
           spending={spendingByCategory(rows)}
           budgets={canViewPlanning ? budgets.data?.byCategory : undefined}
           month={month}

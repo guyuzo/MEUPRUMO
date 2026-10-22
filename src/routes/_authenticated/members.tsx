@@ -150,34 +150,13 @@ function PeopleSection({ isOwner }: { isOwner: boolean }) {
         Use as pessoas para indicar de quem é cada gasto (inclusive quem não usa o app, como filhos) e dividir contas. Toque na
         foto para trocar.
       </p>
-      <Card className="divide-y divide-border p-0">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {list.map((m) => {
           const spent = spending.get(m.id) ?? 0
           return (
-            <div key={m.id} className="flex items-center gap-3 px-4 py-3">
-              {/* Dono gerencia todas as fotos; cada um gerencia a própria. */}
-              <AvatarUpload member={m} url={avatarUrls?.get(m.id)} disabled={!isOwner && m.user_id !== userId} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{m.full_name}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {[m.relationship, m.user_id ? 'acessa o app' : 'sem acesso ao app'].filter(Boolean).join(' · ')}
-                </p>
-                {/* Celular: gasto embaixo do nome (a coluna da direita roubaria espaço do nome). */}
-                {canViewTx && (
-                  <p className="text-xs sm:hidden">
-                    <span className="font-semibold tabular-nums">{formatCents(spent)}</span>
-                    {total > 0 && <span className="text-muted-foreground"> · {Math.round((spent / total) * 100)}% dos gastos</span>}
-                  </p>
-                )}
-              </div>
-              {canViewTx && (
-                <div className="hidden text-right sm:block">
-                  <p className="text-sm font-semibold tabular-nums">{formatCents(spent)}</p>
-                  {total > 0 && <p className="text-xs text-muted-foreground">{Math.round((spent / total) * 100)}% dos gastos</p>}
-                </div>
-              )}
+            <Card key={m.id} className="relative flex flex-col items-center px-3 pb-5 pt-8 text-center">
               {isOwner && (
-                <div className="flex shrink-0">
+                <div className="absolute right-1 top-1 flex">
                   <Button variant="ghost" size="icon" aria-label={`Editar ${m.full_name}`} onClick={() => setDialog({ member: m })}>
                     <Pencil />
                   </Button>
@@ -188,17 +167,30 @@ function PeopleSection({ isOwner }: { isOwner: boolean }) {
                   )}
                 </div>
               )}
-            </div>
+              {/* Dono gerencia todas as fotos; cada um gerencia a própria. */}
+              <AvatarUpload member={m} url={avatarUrls?.get(m.id)} size="xl" disabled={!isOwner && m.user_id !== userId} />
+              <p className="mt-3 w-full truncate font-semibold">{m.full_name}</p>
+              <p className="w-full truncate text-xs text-muted-foreground">
+                {[m.relationship, m.user_id ? 'acessa o app' : 'sem acesso ao app'].filter(Boolean).join(' · ')}
+              </p>
+              {canViewTx && (
+                <div className="mt-4">
+                  <p className="text-lg font-semibold tabular-nums">{formatCents(spent)}</p>
+                  {total > 0 && <p className="text-xs text-muted-foreground">{Math.round((spent / total) * 100)}% dos gastos</p>}
+                </div>
+              )}
+            </Card>
           )
         })}
         {canViewTx && unassigned > 0 && (
-          <div className="flex items-center gap-3 px-4 py-3 text-muted-foreground">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm">🏠</span>
-            <p className="flex-1 text-sm">Gastos da casa (sem pessoa definida)</p>
-            <p className="text-sm font-semibold tabular-nums">{formatCents(unassigned)}</p>
-          </div>
+          <Card className="flex flex-col items-center px-3 pb-5 pt-8 text-center text-muted-foreground">
+            <span className="flex size-28 shrink-0 items-center justify-center rounded-full bg-muted text-4xl">🏠</span>
+            <p className="mt-3 w-full truncate font-semibold">Gastos da casa</p>
+            <p className="w-full truncate text-xs">sem pessoa definida</p>
+            <p className="mt-4 text-lg font-semibold tabular-nums text-foreground">{formatCents(unassigned)}</p>
+          </Card>
         )}
-      </Card>
+      </div>
 
       {dialog && <MemberFormDialog member={dialog.member} nextOrder={list.length} onClose={() => setDialog(null)} />}
       <ConfirmDialog

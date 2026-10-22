@@ -59,6 +59,34 @@ export function useInvoiceTransactions(invoiceId: string | undefined) {
   })
 }
 
+export interface InstallmentPlanWithParts {
+  id: string
+  card_id: string
+  description: string
+  total_amount: number
+  installments: number
+  first_date: string
+  created_at: string
+  parts: Pick<Transaction, 'id' | 'amount' | 'installment_number' | 'invoice_id' | 'category_id' | 'household_member_id'>[]
+}
+
+/** Compras parceladas com as parcelas (a fatura de cada uma diz quando é cobrada). */
+export function useInstallmentPlans() {
+  const householdId = useHousehold().current.household.id
+  return useQuery({
+    queryKey: ['transactions', householdId, 'installment-plans'],
+    queryFn: async (): Promise<InstallmentPlanWithParts[]> => {
+      const { data, error } = await supabase
+        .from('installment_plans')
+        .select('*, parts:transactions(id, amount, installment_number, invoice_id, category_id, household_member_id)')
+        .eq('household_id', householdId)
+        .order('first_date', { ascending: false })
+      if (error) throw error
+      return data as InstallmentPlanWithParts[]
+    },
+  })
+}
+
 /** Limite usado = soma do que falta pagar em todas as faturas do cartão. */
 export function limitUsed(cardId: string, invoices: InvoiceSummary[]) {
   return invoices

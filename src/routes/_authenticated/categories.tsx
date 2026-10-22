@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ChevronDown, PiggyBank, Pencil, Plus, Trash2 } from
 import { useState } from 'react'
 import { z } from 'zod'
 import { CategoryFormDialog } from '@/components/planning/CategoryFormDialog'
+import { CategoryIcon, SubcategoryIcon } from '@/components/planning/CategoryIcon'
 import { PageHeader } from '@/components/shared/layout'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -158,9 +159,7 @@ function CategoryRow({
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
           aria-expanded={expanded}
         >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full text-lg" style={{ backgroundColor: `${category.color}26` }}>
-            {category.emoji}
-          </span>
+          <CategoryIcon icon={category.emoji} color={category.color} size="lg" />
           <span className="min-w-0">
             <span className="block truncate font-medium">{category.name}</span>
             <span className="text-xs text-muted-foreground">
@@ -185,7 +184,7 @@ function CategoryRow({
       {expanded && (
         <div className="space-y-1 border-t border-border px-3 py-2 sm:pl-16">
           {subs.map((sub, index) => (
-            <SubcategoryRow key={sub.id} sub={sub} prev={subs[index - 1]} next={subs[index + 1]} canEdit={canEdit} />
+            <SubcategoryRow key={sub.id} sub={sub} category={category} prev={subs[index - 1]} next={subs[index + 1]} canEdit={canEdit} />
           ))}
           {subs.length === 0 && !canEdit && <p className="py-2 text-sm text-muted-foreground">Sem subcategorias.</p>}
           {canEdit && (
@@ -217,7 +216,19 @@ function CategoryRow({
   )
 }
 
-function SubcategoryRow({ sub, prev, next, canEdit }: { sub: Subcategory; prev?: Subcategory; next?: Subcategory; canEdit: boolean }) {
+function SubcategoryRow({
+  sub,
+  category,
+  prev,
+  next,
+  canEdit,
+}: {
+  sub: Subcategory
+  category: CategoryWithSubs
+  prev?: Subcategory
+  next?: Subcategory
+  canEdit: boolean
+}) {
   const [name, setName] = useState(sub.name)
   const { saveSubcategory, deleteSubcategory, swapOrder } = useCategoryMutations()
   const swapWith = (other: Subcategory) => swapOrder.mutate({ table: 'subcategories', a: sub, b: other })
@@ -230,6 +241,7 @@ function SubcategoryRow({ sub, prev, next, canEdit }: { sub: Subcategory; prev?:
 
   return (
     <div className="flex items-center gap-1">
+      <SubcategoryIcon name={name} own={sub.emoji} categoryIcon={category.emoji} color={category.color} />
       {canEdit ? (
         <Input
           value={name}

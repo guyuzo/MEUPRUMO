@@ -1,11 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { ColorPicker, EmojiPicker } from '@/components/shared/pickers'
+import { CategoryIconPicker } from '@/components/planning/CategoryIcon'
+import { ColorPicker } from '@/components/shared/pickers'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { FieldError, Input, Label } from '@/components/ui/input'
 import { useCategoryMutations, type CategoryWithSubs } from '@/hooks/usePlanning'
+import { categoryIconKey } from '@/lib/categoryIcons'
 import type { CategoryKind } from '@/types/database'
 
 const schema = z.object({
@@ -32,7 +34,7 @@ function CategoryFormDialogContent({
   // Valores iniciais: usados como "values" e para limpar o form ao fechar.
   const initialValues: Values = {
     name: category?.name ?? '',
-    emoji: category?.emoji ?? (kind === 'income' ? '💰' : '📦'),
+    emoji: categoryIconKey(category?.emoji) ?? (kind === 'income' ? 'coins' : 'tag'),
     color: category?.color ?? '#6366f1',
   }
   const form = useForm<Values>({
@@ -41,6 +43,7 @@ function CategoryFormDialogContent({
     resetOptions: { keepDirtyValues: true },
     values: initialValues,
   })
+  const color = form.watch('color')
   const close = () => {
     form.reset(initialValues)
     onClose()
@@ -66,7 +69,7 @@ function CategoryFormDialogContent({
           <Controller
             control={form.control}
             name="emoji"
-            render={({ field }) => <EmojiPicker value={field.value} onChange={field.onChange} />}
+            render={({ field }) => <CategoryIconPicker value={field.value} color={color} onChange={field.onChange} />}
           />
         </div>
         <div className="space-y-1.5">

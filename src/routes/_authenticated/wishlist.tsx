@@ -9,11 +9,14 @@ import { Card } from '@/components/ui/card'
 import { ConfirmDialog, Dialog } from '@/components/ui/dialog'
 import { FieldError, Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { Avatar } from '@/components/family/Avatar'
+import { useAvatarUrls } from '@/hooks/useAvatars'
+import { useMembers } from '@/hooks/useFamily'
 import { usePermission } from '@/hooks/useHousehold'
 import { useHouseholdRows, useTableMutations } from '@/hooks/useTable'
 import { formatCents } from '@/lib/money'
 import { cn } from '@/lib/utils'
-import type { WishlistItem, WishlistSection } from '@/types/database'
+import type { HouseholdMember, WishlistItem, WishlistSection } from '@/types/database'
 
 export const Route = createFileRoute('/_authenticated/wishlist')({ component: WishlistPage })
 
@@ -29,7 +32,17 @@ type ItemInput = {
   url: string | null
   priority: 1 | 2 | 3
   notes: string | null
+  member_id: string | null
   purchased_at?: string | null
+}
+
+/** "https://www.amazon.com.br/..." → "amazon.com.br" */
+function siteName(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return 'Abrir link'
+  }
 }
 
 function WishlistPage() {
@@ -38,6 +51,10 @@ function WishlistPage() {
   const items = useHouseholdRows<WishlistItem>('wishlist_items', { order: 'priority' })
   const sectionMut = useTableMutations<SectionInput>('wishlist_sections', { invalidate: ['wishlist_items'], label: 'lista' })
   const itemMut = useTableMutations<ItemInput>('wishlist_items', { label: 'item' })
+  const members = useMembers().data ?? []
+  const avatarUrls = useAvatarUrls(members).data
+  const memberById = new Map(members.map((m) => [m.id, m]))
+  const [person, setPerson] = useState<string>('all')
 
   const [sectionDialog, setSectionDialog] = useState<{ section?: WishlistSection } | null>(null)
   const [itemDialog, setItemDialog] = useState<{ sectionId: string; item?: WishlistItem } | null>(null)
@@ -56,6 +73,7 @@ function WishlistPage() {
       url: item.url,
       priority: item.priority,
       notes: item.notes,
+      member_id: item.member_id,
       purchased_at: item.purchased_at ? null : nowIso(),
     })
 
@@ -88,10 +106,36 @@ function WishlistPage() {
           }
         />
       ) : (
+        <>
+        {members.length > 1 && (
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por pessoa">
+            {[{ id: 'all', full_name: 'Todos' }, ...members, { id: 'house', full_name: 'Casa toda' }].map((m) => {
+              const member = memberById.get(m.id)
+              const active = person === m.id
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setPerson(m.id)}
+                  className={cn(
+                    'flex min-h-10 items-center gap-2 rounded-full border border-border bg-card py-1 pl-1 pr-3 text-sm',
+                    m.id === 'all' || m.id === 'house' ? 'pl-3' : '',
+                    active ? 'border-primary bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {member && <Avatar member={member} url={avatarUrls?.get(member.id)} size="sm" />}
+                  {m.full_name}
+                </button>
+              )
+            })}
+          </div>
+        )}
         <div className="grid gap-4 lg:grid-cols-2">
           {allSections.map((section) => {
             const list = allItems
               .filter((i) => i.section_id === section.id)
+              .filter((i) => person === 'all' || (person === 'house' ? !i.member_id : i.member_id === person))
               .sort((a, b) => Number(Boolean(a.purchased_at)) - Number(Boolean(b.purchased_at)) || a.priority - b.priority)
             const missing = list.filter((i) => !i.purchased_at).reduce((s, i) => s + (i.price ?? 0), 0)
             return (
@@ -116,7 +160,10 @@ function WishlistPage() {
                   )}
                 </div>
                 <ul className="divide-y divide-border border-t border-border">
-                  {list.map((item) => (
+                  {list.length === 0 && <li className="px-4 py-3 text-sm text-muted-foreground">Nenhum desejo aqui.</li>}
+                  {list.map((item) => {
+                    const owner = item.member_id ? memberById.get(item.member_id) : undefined
+                    return (
                     <li key={item.id} className={cn('flex items-center gap-3 px-4 py-2.5', item.purchased_at && 'opacity-55')}>
                       <button
                         type="button"
@@ -142,20 +189,23 @@ function WishlistPage() {
                         <p className="truncate text-xs text-muted-foreground">
                           {/* Celular: preço aqui, embaixo do nome (a coluna da direita fica só com os ícones). */}
                           {item.price != null && <span className="font-medium text-foreground sm:hidden">{formatCents(item.price)} · </span>}
-                          Prioridade {PRIORITY[item.priority].toLowerCase()}
+                          {owner ? owner.full_name : 'Casa'} · prioridade {PRIORITY[item.priority].toLowerCase()}
                           {item.notes && ` · ${item.notes}`}
                         </p>
+                        {item.url && (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-0.5 inline-flex max-w-full items-center gap-1 text-xs font-medium text-primary hover:underline"
+                          >
+                            <ExternalLink className="size-3 shrink-0" />
+                            <span className="truncate">Comprar em {siteName(item.url)}</span>
+                          </a>
+                        )}
                       </div>
-                      {item.url && (
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`Abrir link de ${item.name}`}
-                          className="-m-2 flex size-10 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
-                        >
-                          <ExternalLink className="size-4" />
-                        </a>
+                      {owner && (
+                        <Avatar member={owner} url={avatarUrls?.get(owner.id)} size="sm" className="hidden sm:flex" />
                       )}
                       {item.price != null && <span className="hidden shrink-0 text-sm tabular-nums sm:inline">{formatCents(item.price)}</span>}
                       {canEdit && (
@@ -170,7 +220,8 @@ function WishlistPage() {
                         </Button>
                       )}
                     </li>
-                  ))}
+                    )
+                  })}
                 </ul>
                 {canEdit && (
                   <div className="px-4 pb-3">
@@ -183,6 +234,7 @@ function WishlistPage() {
             )
           })}
         </div>
+        </>
       )}
 
       {sectionDialog && (
@@ -197,6 +249,8 @@ function WishlistPage() {
         <ItemDialog
           sectionId={itemDialog.sectionId}
           item={itemDialog.item}
+          members={members}
+          defaultMember={person !== 'all' && person !== 'house' ? person : null}
           onClose={() => setItemDialog(null)}
           onSave={(values) => itemMut.save.mutateAsync({ id: itemDialog.item?.id, ...values })}
           onDelete={itemDialog.item ? () => itemMut.remove.mutateAsync(itemDialog.item!.id) : undefined}
@@ -259,6 +313,8 @@ function SectionDialog({
 function ItemDialog({
   sectionId,
   item,
+  members,
+  defaultMember,
   onClose,
   onSave,
   onDelete,
@@ -266,6 +322,8 @@ function ItemDialog({
 }: {
   sectionId: string
   item?: WishlistItem
+  members: HouseholdMember[]
+  defaultMember: string | null
   onClose: () => void
   onSave: (values: ItemInput) => Promise<unknown>
   onDelete?: () => Promise<unknown>
@@ -276,6 +334,7 @@ function ItemDialog({
   const [url, setUrl] = useState(item?.url ?? '')
   const [priority, setPriority] = useState<1 | 2 | 3>(item?.priority ?? 2)
   const [notes, setNotes] = useState(item?.notes ?? '')
+  const [memberId, setMemberId] = useState(item ? (item.member_id ?? '') : (defaultMember ?? ''))
   const [error, setError] = useState<string>()
 
   const submit = async () => {
@@ -289,6 +348,7 @@ function ItemDialog({
       url: link || null,
       priority,
       notes: notes.trim() || null,
+      member_id: memberId || null,
       purchased_at: item?.purchased_at ?? null,
     })
     onClose()
@@ -312,8 +372,18 @@ function ItemDialog({
             </Select>
           </Field>
         </div>
-        <Field label="Link" htmlFor="item-url">
-          <Input id="item-url" type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
+        <Field label="De quem é" htmlFor="item-member">
+          <Select id="item-member" value={memberId} onChange={(e) => setMemberId(e.target.value)}>
+            <option value="">Casa toda</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id} data-color={m.color}>
+                {m.full_name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Onde comprar (link)" htmlFor="item-url">
+          <Input id="item-url" type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.loja.com.br/produto" />
         </Field>
         <Field label="Observações" htmlFor="item-notes">
           <Input id="item-notes" value={notes} maxLength={200} onChange={(e) => setNotes(e.target.value)} />

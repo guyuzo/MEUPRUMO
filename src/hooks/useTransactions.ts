@@ -13,6 +13,10 @@ export interface TransactionFilters {
   status?: TxStatus
   direction?: TxDirection
   search?: string
+  /** expenses = tudo menos ganhos (saídas, cartão, transferências); income = só ganhos. */
+  scope?: 'expenses' | 'income'
+  /** Pessoa da casa; 'none' = sem pessoa (gastos da casa). */
+  memberId?: string
 }
 
 export function useTransactions(filters: TransactionFilters) {
@@ -36,6 +40,10 @@ export function useTransactions(filters: TransactionFilters) {
       if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
       if (filters.status) query = query.eq('status', filters.status)
       if (filters.direction) query = query.eq('direction', filters.direction)
+      if (filters.scope === 'income') query = query.eq('kind', 'income')
+      if (filters.scope === 'expenses') query = query.neq('kind', 'income')
+      if (filters.memberId === 'none') query = query.is('household_member_id', null)
+      else if (filters.memberId) query = query.eq('household_member_id', filters.memberId)
       if (filters.search?.trim()) {
         // Remove caracteres com significado no filtro do PostgREST.
         const term = filters.search.trim().replace(/[%,()*]/g, ' ')

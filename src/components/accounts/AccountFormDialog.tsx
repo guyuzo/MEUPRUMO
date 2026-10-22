@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { BankPicker } from '@/components/cards/BankPicker'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { ColorPicker } from '@/components/shared/pickers'
 import { Button } from '@/components/ui/button'
@@ -10,6 +11,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { FieldError, Input, Label } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { useAccountMutations, type AccountWithBalance } from '@/hooks/useAccounts'
+import { findBank, type Bank } from '@/lib/banks'
 import { ACCOUNT_TYPE_LABEL } from '@/lib/finance/labels'
 
 const optionalText = z
@@ -22,7 +24,6 @@ const schema = z.object({
   name: z.string().trim().min(1, 'Informe um nome').max(60),
   type: z.enum(['checking', 'savings', 'cash', 'investment', 'other']),
   bank: optionalText,
-  branch: optionalText,
   account_number: optionalText,
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   initial_balance: z.number({ invalid_type_error: 'Informe o saldo' }).int(),
@@ -48,7 +49,6 @@ function AccountFormDialogContent({
     name: account?.name ?? '',
     type: account?.type ?? 'checking',
     bank: account?.bank ?? '',
-    branch: account?.branch ?? '',
     account_number: account?.account_number ?? '',
     color: account?.color ?? '#1f6b56',
     initial_balance: account?.initial_balance ?? 0,
@@ -61,6 +61,15 @@ function AccountFormDialogContent({
     values: initialValues,
   })
   const { errors, isSubmitting } = form.formState
+  // Banco fora da lista: o nome é digitado num campo de texto.
+  const [otherBank, setOtherBank] = useState(Boolean(account?.bank && !findBank(account.bank)))
+  const chooseBank = (picked: Bank) => {
+    setOtherBank(false)
+    form.setValue('bank', picked.name, { shouldDirty: true })
+    // A cor acompanha o banco, a menos que o usuário já tenha escolhido outra.
+    if (!form.getFieldState('color').isDirty) form.setValue('color', picked.color)
+    if (!form.getValues('name').trim()) form.setValue('name', `Conta ${picked.name}`)
+  }
   const close = () => {
     form.reset(initialValues)
     onClose()
@@ -76,8 +85,22 @@ function AccountFormDialogContent({
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="acc-bank">Banco</Label>
+            <BankPicker
+              id="acc-bank"
+              value={form.watch('bank') ?? ''}
+              otherBank={otherBank}
+              onPick={chooseBank}
+              onOther={() => {
+                setOtherBank(true)
+                form.setValue('bank', '', { shouldDirty: true })
+              }}
+              otherInputProps={{ autoFocus: !account?.bank, ...form.register('bank') }}
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="acc-name">Nome</Label>
-            <Input id="acc-name" placeholder="Ex.: Conta principal" autoFocus {...form.register('name')} />
+            <Input id="acc-name" placeholder="Ex.: Conta principal" {...form.register('name')} />
             <FieldError message={errors.name?.message} />
           </div>
           <div className="space-y-1.5">
@@ -89,14 +112,6 @@ function AccountFormDialogContent({
                 </option>
               ))}
             </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="acc-bank">Banco</Label>
-            <Input id="acc-bank" placeholder="Opcional" {...form.register('bank')} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="acc-branch">Agência</Label>
-            <Input id="acc-branch" placeholder="Opcional" {...form.register('branch')} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="acc-number">Número da conta</Label>

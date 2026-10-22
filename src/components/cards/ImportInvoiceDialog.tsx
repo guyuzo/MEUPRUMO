@@ -1,13 +1,14 @@
 import { format, parseISO } from 'date-fns'
-import { AlertTriangle, FileUp, Upload } from 'lucide-react'
+import { AlertTriangle, FileUp, Lock, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { CategoryPicker } from '@/components/planning/CategoryPicker'
 import { MonthPicker } from '@/components/shared/pickers'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Dropdown } from '@/components/ui/dropdown'
-import { FieldError, Label } from '@/components/ui/input'
+import { FieldError, Input, Label } from '@/components/ui/input'
 import { todayIso, useCards } from '@/hooks/useCards'
+import { useMembers } from '@/hooks/useFamily'
 import {
   duplicateKey,
   fetchExistingKeys,
@@ -18,7 +19,8 @@ import {
 import { useCategories } from '@/hooks/usePlanning'
 import { formatMonthTitle, shiftMonth } from '@/lib/dates'
 import { invoiceDates, invoiceDatesForReference } from '@/lib/finance/invoice'
-import { classifyLine, normalizeDescription, parseStatement, readStatementFile, type LineKind } from '@/lib/import/statement'
+import { extractPdfLines, isPdf, PdfPasswordError } from '@/lib/import/pdf'
+import { classifyLine, normalizeDescription, parsePdfLines, parseStatement, readStatementFile, type LineKind } from '@/lib/import/statement'
 import { formatCents } from '@/lib/money'
 import { cn } from '@/lib/utils'
 
@@ -35,11 +37,23 @@ interface ReviewRow {
   include: boolean
   category_id: string
   subcategory_id: string
+  member_id: string
+  /** Final do cartão (adicional/virtual) que algumas faturas mostram antes da descrição. */
+  cardFinal: string | null
 }
 
-/** Importa uma fatura fechada (OFX/CSV): escolher cartão e fatura → enviar arquivo → revisar. */
+// "•••• 3568 Mp *Loja" → final 3568, descrição "Mp *Loja"
+const CARD_FINAL = /^[•*·.]{2,}\s*(\d{4})\s+(.+)$/
+
+function splitCardFinal(description: string): { cardFinal: string | null; description: string } {
+  const match = description.match(CARD_FINAL)
+  return match ? { cardFinal: match[1], description: match[2].trim() } : { cardFinal: null, description }
+}
+
+/** Importa uma fatura fechada (PDF/OFX/CSV): escolher cartão e fatura → enviar arquivo → revisar. */
 function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean; onClose: () => void; defaultCardId?: string }) {
   const cards = useCards().data ?? []
+  const members = useMembers().data ?? []
   const categories = (useCategories().data ?? []).filter((c) => c.kind === 'expense')
   const suggestions = useCategorySuggestions(true)
   const { importStatement } = useInvoiceImportMutations()
@@ -59,15 +73,33 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
   const [warnings, setWarnings] = useState<string[]>([])
   const [error, setError] = useState<string>()
   const [loading, setLoading] = useState(false)
+  // PDF com senha: guarda o arquivo até a pessoa digitar a senha.
+  const [locked, setLocked] = useState<File | null>(null)
+  const [password, setPassword] = useState('')
 
-  const handleFile = async (file: File) => {
+  const handleFile = async (file: File, pdfPassword?: string) => {
     if (!card || !reference) return
     setError(undefined)
     if (file.size > MAX_FILE_BYTES) return setError('Arquivo muito grande (máximo 5 MB).')
     setLoading(true)
     try {
-      const text = await readStatementFile(file)
-      const parsed = parseStatement(file.name, text, reference)
+      let parsed
+      if (isPdf(file)) {
+        try {
+          parsed = parsePdfLines(await extractPdfLines(file, pdfPassword), reference)
+        } catch (e) {
+          if (e instanceof PdfPasswordError) {
+            setLocked(file)
+            setError(e.wrongPassword ? 'Senha incorreta. Tente de novo.' : undefined)
+            return
+          }
+          throw e
+        }
+        setLocked(null)
+        setPassword('')
+      } else {
+        parsed = parseStatement(file.name, await readStatementFile(file), reference)
+      }
       if (parsed.lines.length === 0) {
         setError(parsed.warnings[0] ?? 'Nenhum lançamento encontrado no arquivo.')
         return
@@ -81,11 +113,14 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
         sorted.map((line) => {
           const kind = classifyLine(line)
           const duplicate = existing.externalIds.has(line.externalId) || existing.keys.has(duplicateKey(line.date, line.amount, line.description))
-          const hint = suggest?.get(normalizeDescription(line.description))
+          const { cardFinal, description } = splitCardFinal(line.description)
+          const hint = suggest?.get(normalizeDescription(description)) ?? suggest?.get(normalizeDescription(line.description))
           return {
             id: line.externalId,
             date: line.date,
-            description: line.description,
+            description,
+            cardFinal,
+            member_id: '',
             amount: line.amount,
             kind,
             duplicate,
@@ -99,7 +134,7 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
       setWarnings(parsed.warnings)
       setFileName(file.name)
     } catch {
-      setError('Não consegui ler o arquivo. Confira se é um OFX ou CSV exportado pelo banco.')
+      setError('Não consegui ler o arquivo. Confira se é o PDF, OFX ou CSV da fatura exportado pelo banco.')
     } finally {
       setLoading(false)
     }
@@ -108,13 +143,26 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
   const selected = (rows ?? []).filter((r) => r.include && r.kind !== 'payment')
   const total = selected.reduce((s, r) => s + r.amount, 0)
   const update = (id: string, patch: Partial<ReviewRow>) => setRows((list) => list?.map((r) => (r.id === id ? { ...r, ...patch } : r)) ?? null)
+  const finals = [...new Set((rows ?? []).map((r) => r.cardFinal).filter(Boolean) as string[])]
+  // Pessoa de um final vale para todas as linhas daquele final.
+  const setFinalMember = (final: string, member_id: string) =>
+    setRows((list) => list?.map((r) => (r.cardFinal === final ? { ...r, member_id } : r)) ?? null)
+  const finalMember = (final: string) => {
+    const ids = new Set((rows ?? []).filter((r) => r.cardFinal === final).map((r) => r.member_id))
+    return ids.size === 1 ? [...ids][0] : '__mixed'
+  }
+  const memberOptions = [
+    { value: '', label: 'Casa', description: 'Sem pessoa' },
+    ...members.map((m) => ({ value: m.id, label: m.full_name, color: m.color })),
+  ]
 
   const submit = async () => {
     if (!card || !reference || selected.length === 0) return
     const payload: ImportRow[] = selected.map((r) => ({
       kind: r.kind === 'refund' ? 'card_refund' : 'card_purchase',
       occurred_on: r.date,
-      description: r.description,
+      description: r.description.trim() || 'Compra no cartão',
+      household_member_id: r.member_id || null,
       amount: Math.abs(r.amount),
       external_id: r.id,
       category_id: r.kind === 'purchase' ? r.category_id || null : null,
@@ -137,8 +185,8 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
       open
       onClose={onClose}
       title="Importar fatura fechada"
-      description={rows ? `${fileName} · ${card?.name} · Fatura de ${formatMonthTitle(reference!)}` : 'Use o arquivo OFX ou CSV que o banco disponibiliza para a fatura.'}
-      className="max-w-3xl"
+      description={rows ? `${fileName} · ${card?.name} · Fatura de ${formatMonthTitle(reference!)}` : 'Use o PDF da fatura ou o arquivo OFX/CSV que o banco disponibiliza.'}
+      className="max-w-4xl"
     >
       {!rows ? (
         <div className="space-y-4">
@@ -187,12 +235,41 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
           >
             <FileUp className="size-8 text-muted-foreground" />
             <span className="text-sm font-medium">{loading ? 'Lendo arquivo…' : 'Escolher arquivo da fatura'}</span>
-            <span className="text-xs text-muted-foreground">OFX ou CSV · ou arraste aqui · o arquivo é lido no seu navegador</span>
+            <span className="text-xs text-muted-foreground">PDF, OFX ou CSV · ou arraste aqui · o arquivo é lido no seu navegador</span>
           </button>
+          {locked && (
+            <form
+              className="space-y-2 rounded-lg border border-border p-3"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (password) handleFile(locked, password)
+              }}
+            >
+              <Label htmlFor="imp-pdf-password">
+                <Lock className="mr-1 inline size-3.5" /> {locked.name} tem senha
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Muitos bancos protegem a fatura com parte do CPF. A senha só é usada aqui no navegador para abrir o arquivo.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  id="imp-pdf-password"
+                  type="password"
+                  autoFocus
+                  autoComplete="off"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <Button type="submit" disabled={!password || loading}>
+                  Abrir
+                </Button>
+              </div>
+            </form>
+          )}
           <input
             ref={fileInput}
             type="file"
-            accept=".ofx,.qfx,.csv,.txt,text/csv"
+            accept=".pdf,application/pdf,.ofx,.qfx,.csv,.txt,text/csv"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0]
@@ -216,6 +293,31 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
                 ))}
               </ul>
             </details>
+          )}
+
+          {members.length > 1 && finals.length > 0 && (
+            <div className="space-y-2 rounded-xl bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">
+                Quem usa cada final do cartão? A escolha vale para todas as compras daquele final (dá para mudar linha a linha depois).
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {finals.map((final) => (
+                  <div key={final} className="flex items-center gap-2 rounded-lg border border-border bg-card pl-3">
+                    <span className="text-sm tabular-nums text-muted-foreground">•••• {final}</span>
+                    <div className="w-40">
+                      <Dropdown
+                        aria-label={`Pessoa do final ${final}`}
+                        variant="row"
+                        value={finalMember(final)}
+                        placeholder="Várias pessoas"
+                        onChange={(id) => setFinalMember(final, id)}
+                        options={memberOptions}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           <div className="flex items-center justify-between gap-2 text-sm">
@@ -243,23 +345,50 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
                   onChange={(e) => update(r.id, { include: e.target.checked })}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm">{r.description}</p>
+                  {r.kind === 'payment' ? (
+                    <p className="truncate text-sm">{r.description}</p>
+                  ) : (
+                    <input
+                      value={r.description}
+                      maxLength={120}
+                      onChange={(e) => update(r.id, { description: e.target.value })}
+                      aria-label="Nome do lançamento"
+                      title="Clique para renomear"
+                      className="-ml-1.5 h-8 w-full truncate rounded-md border border-transparent bg-transparent px-1.5 text-sm hover:border-input focus:border-input focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  )}
                   <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     {format(parseISO(r.date), 'dd/MM/yyyy')}
+                    {r.cardFinal && <span className="tabular-nums">· final {r.cardFinal}</span>}
                     {r.duplicate && <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Já lançado</Badge>}
                     {r.kind === 'payment' && <Badge className="bg-muted">Pagamento da fatura · não importa</Badge>}
                     {r.kind === 'refund' && <Badge className="bg-sky-500/15 text-sky-800 dark:text-sky-300">Estorno</Badge>}
                   </p>
                 </div>
-                {r.kind === 'purchase' && (
-                  // Celular: categoria vai para a linha de baixo (depois do valor); desktop: entre descrição e valor.
-                  <div className="order-last w-full pl-7 sm:order-none sm:w-56 sm:pl-0">
-                    <CategoryPicker
-                      categories={categories}
-                      categoryId={r.category_id}
-                      subcategoryId={r.subcategory_id}
-                      onChange={(category_id, subcategory_id) => update(r.id, { category_id, subcategory_id })}
-                    />
+                {r.kind !== 'payment' && (
+                  // Celular: categoria e pessoa vão para a linha de baixo (depois do valor); desktop: entre descrição e valor.
+                  <div className="order-last flex w-full gap-1 pl-7 sm:order-none sm:w-auto sm:pl-0">
+                    {r.kind === 'purchase' && (
+                      <div className="min-w-0 flex-1 sm:w-48 sm:flex-none">
+                        <CategoryPicker
+                          categories={categories}
+                          categoryId={r.category_id}
+                          subcategoryId={r.subcategory_id}
+                          onChange={(category_id, subcategory_id) => update(r.id, { category_id, subcategory_id })}
+                        />
+                      </div>
+                    )}
+                    {members.length > 1 && (
+                      <div className="min-w-0 flex-1 sm:w-32 sm:flex-none">
+                        <Dropdown
+                          aria-label="Quem gastou"
+                          variant="row"
+                          value={r.member_id}
+                          onChange={(member_id) => update(r.id, { member_id })}
+                          options={memberOptions}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
                 <span className={cn('shrink-0 text-right text-sm font-medium tabular-nums sm:w-28', r.amount < 0 && 'text-income')}>

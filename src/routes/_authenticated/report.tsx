@@ -3,6 +3,7 @@ import { format, parseISO } from 'date-fns'
 import { Printer } from 'lucide-react'
 import { useState } from 'react'
 import { z } from 'zod'
+import { CategoryIcon } from '@/components/planning/CategoryIcon'
 import { BackLink } from '@/components/shared/layout'
 import { MonthPicker } from '@/components/shared/pickers'
 import { Button } from '@/components/ui/button'
@@ -121,7 +122,10 @@ function ReportPage() {
                 {categoryRows.map(({ c, spent, budget }) => (
                   <tr key={c.id}>
                     <td className="py-1.5">
-                      {c.emoji} {c.name}
+                      <span className="flex items-center gap-2">
+                        <CategoryIcon icon={c.emoji} color={c.color} size="xs" />
+                        {c.name}
+                      </span>
                     </td>
                     <td className="py-1.5 text-right tabular-nums">{formatCents(spent)}</td>
                     {budgets && <td className="py-1.5 text-right tabular-nums">{budget ? formatCents(budget) : '—'}</td>}

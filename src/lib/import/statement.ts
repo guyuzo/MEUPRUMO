@@ -1,4 +1,4 @@
-// Leitura de extratos de fatura de cartão (OFX e CSV), feita no navegador.
+// Leitura de extratos de fatura de cartão (OFX, CSV e PDF), feita no navegador.
 // Convenção de saída: amount em centavos, POSITIVO = compra, NEGATIVO = crédito (pagamento/estorno).
 
 export interface StatementLine {
@@ -11,7 +11,7 @@ export interface StatementLine {
 }
 
 export interface ParsedStatement {
-  format: 'ofx' | 'csv'
+  format: 'ofx' | 'csv' | 'pdf'
   lines: StatementLine[]
   warnings: string[]
 }
@@ -238,6 +238,70 @@ export function parseCsv(text: string, referenceMonth?: string): ParsedStatement
     warnings.push('Valores negativos interpretados como compras (padrão do arquivo).')
   }
   return { format: 'csv', lines, warnings }
+}
+
+// ---------------------------------------------------------------------------
+// PDF (texto já extraído, uma string por linha visual da fatura)
+// ---------------------------------------------------------------------------
+
+const MONTHS: Record<string, number> = {
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+  feb: 2, apr: 4, may: 5, aug: 8, sep: 9, oct: 10, dec: 12,
+}
+
+// "05/10", "05/10/2026", "05/10/26", "05 OUT", "05 out 2026", "05-OUT"
+const MONTH_WORD =
+  '(?:jan(?:eiro)?|fev(?:ereiro)?|feb|mar(?:co|ço)?|abr(?:il)?|apr|mai(?:o)?|may|jun(?:ho)?|jul(?:ho)?|ago(?:sto)?|aug|set(?:embro)?|sep|out(?:ubro)?|oct|nov(?:embro)?|dez(?:embro)?|dec)'
+const PDF_DATE = new RegExp(`^(\\d{1,2}[/.-]\\d{1,2}(?:[/.-]\\d{2,4})?|\\d{1,2}[\\s-]?${MONTH_WORD}\\.?(?:[\\s/-]\\d{4}|[/-]\\d{2})?)\\s+`, 'i')
+// Valor no fim da linha: "1.234,56", "R$ 45,90", "- 12,30", "12,30-", "−12,30"
+const PDF_AMOUNT = /\s([-−–+]?\s?(?:R\$\s?)?\d{1,3}(?:\.\d{3})*,\d{2}\s?-?)$/i
+// Linhas de resumo da fatura que também têm data e valor, mas não são lançamentos.
+const PDF_SUMMARY = /\b(total|subtotal|saldo|limite|vencimento|fatura anterior|valor minimo|minimo|encargos|juros do|iof do|cotacao|pagamento minimo)\b/i
+
+function pdfDate(raw: string, referenceMonth?: string): string | null {
+  const text = raw.trim().toLowerCase().replace(/\.$/, '')
+  const named = text.match(/^(\d{1,2})[\s-]?([a-zç]{3})[a-zç]*\.?(?:[\s/-](\d{2,4}))?$/)
+  if (named) {
+    const month = MONTHS[named[2]]
+    if (!month) return null
+    const year = named[3] ? `/${named[3]}` : ''
+    return parseDate(`${named[1]}/${month}${year}`, referenceMonth)
+  }
+  return parseDate(text, referenceMonth)
+}
+
+/**
+ * Lê lançamentos do texto de uma fatura em PDF: cada linha que começa com data e termina com
+ * valor vira um lançamento. Compra positiva; crédito/pagamento com sinal de menos.
+ */
+export function parsePdfLines(textLines: string[], referenceMonth?: string): ParsedStatement {
+  const warnings: string[] = []
+  const lines: StatementLine[] = []
+  const seen = new Map<string, number>()
+
+  for (const rawLine of textLines) {
+    const row = rawLine.replace(/\s+/g, ' ').trim()
+    const dateMatch = row.match(PDF_DATE)
+    const amountMatch = row.match(PDF_AMOUNT)
+    if (!dateMatch || !amountMatch) continue
+    const date = pdfDate(dateMatch[1], referenceMonth)
+    const value = parseAmount(amountMatch[1].replace(/[−–]/g, '-'))
+    let description = row.slice(dateMatch[0].length, row.length - amountMatch[0].length).trim()
+    // Algumas faturas repetem o valor em dólar antes do valor em reais: tira o que sobrou de número no fim.
+    description = description.replace(/\s(?:US\$|USD)?\s?[\d.,]+$/i, '').trim()
+    if (!date || value == null || value === 0 || !description) continue
+    if (PDF_SUMMARY.test(normalizeDescription(description))) continue
+
+    const base = `${date}|${description}|${value}`
+    const occurrence = (seen.get(base) ?? 0) + 1
+    seen.set(base, occurrence)
+    lines.push({ date, description, amount: value, externalId: `pdf:${hash(`${base}|${occurrence}`)}` })
+  }
+
+  if (lines.length === 0) {
+    warnings.push('Não encontrei lançamentos no PDF. Se a fatura for uma imagem escaneada, use o OFX ou CSV do banco.')
+  }
+  return { format: 'pdf', lines, warnings }
 }
 
 export function parseStatement(fileName: string, text: string, referenceMonth?: string): ParsedStatement {

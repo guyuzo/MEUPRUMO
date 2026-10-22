@@ -201,7 +201,7 @@ function DangerSection() {
   return (
     <Section
       title="Recomeçar do zero"
-      description="Apaga contas, cartões, transações, dívidas, metas, investimentos e lista de desejos desta casa. Pessoas e acessos são mantidos."
+      description="Apaga contas, cartões, transações, dívidas, metas e lista de desejos desta casa. Pessoas e acessos são mantidos."
       className="border-destructive/40"
     >
       <Button variant="destructive" onClick={() => setOpen(true)}>
