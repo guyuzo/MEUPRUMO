@@ -28,15 +28,15 @@ function AuthenticatedLayout() {
 
   return (
     <div className="flex min-h-svh">
-      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 border-r border-border bg-card md:block print:hidden">
+      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 bg-sidebar md:block print:hidden">
         <AppSidebar />
       </aside>
 
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <button type="button" aria-label="Fechar menu" className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-64 bg-card shadow-xl">
-            <Button variant="ghost" size="icon" className="absolute right-2 top-3" onClick={() => setMobileOpen(false)} aria-label="Fechar menu">
+          <aside className="absolute inset-y-0 left-0 w-64 bg-sidebar shadow-xl">
+            <Button variant="ghost" size="icon" className="absolute right-2 top-3 text-sidebar-foreground hover:bg-sidebar-active/50 hover:text-sidebar-foreground" onClick={() => setMobileOpen(false)} aria-label="Fechar menu">
               <X />
             </Button>
             <AppSidebar onNavigate={() => setMobileOpen(false)} />

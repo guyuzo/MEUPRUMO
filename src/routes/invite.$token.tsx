@@ -67,7 +67,7 @@ function InvitePage() {
   if (!summary) {
     return (
       <AuthLayout title="Convite inválido" subtitle="Confira se o link foi copiado inteiro.">
-        <Link to="/auth/login" className="text-sm text-primary hover:underline">
+        <Link to="/auth/login" className="text-sm text-primary hover:underline py-3">
           Ir para o login
         </Link>
       </AuthLayout>
@@ -77,7 +77,7 @@ function InvitePage() {
   if (summary.status !== 'valid') {
     return (
       <AuthLayout title="Convite indisponível" subtitle={STATUS_TEXT[summary.status]}>
-        <Link to="/dashboard" className="text-sm text-primary hover:underline">
+        <Link to="/dashboard" className="text-sm text-primary hover:underline py-3">
           Ir para o app
         </Link>
       </AuthLayout>

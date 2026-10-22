@@ -48,7 +48,7 @@ function LoginPage() {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Senha</Label>
-            <Link to="/auth/reset-password" className="text-xs text-primary hover:underline">
+            <Link to="/auth/reset-password" className="text-xs text-primary hover:underline py-3">
               Esqueci minha senha
             </Link>
           </div>
@@ -62,7 +62,7 @@ function LoginPage() {
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Não tem conta?{' '}
-        <Link to="/auth/signup" search={{ redirect }} className="text-primary hover:underline">
+        <Link to="/auth/signup" search={{ redirect }} className="text-primary hover:underline py-3">
           Criar conta
         </Link>
       </p>

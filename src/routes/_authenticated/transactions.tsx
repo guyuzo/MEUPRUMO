@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Plus, Search } from 'lucide-react'
+import { FileUp, Plus, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { CardPurchaseSheet } from '@/components/cards/CardPurchaseSheet'
+import { ImportInvoiceDialog } from '@/components/cards/ImportInvoiceDialog'
 import { MonthPicker } from '@/components/shared/pickers'
 import { TotalsBar, TransactionList } from '@/components/transactions/TransactionList'
 import { TransactionFormSheet } from '@/components/transactions/TransactionFormSheet'
@@ -67,17 +68,24 @@ function TransactionsPage() {
   const rows = transactions.data ?? []
 
   const [sheet, setSheet] = useState<{ open: boolean; tx?: Transaction }>({ open: false })
+  const [importOpen, setImportOpen] = useState(false)
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Transações</h1>
         {canEdit && (
-          <Button onClick={() => setSheet({ open: true })}>
-            <Plus /> Nova transação
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <FileUp /> Importar fatura
+            </Button>
+            <Button onClick={() => setSheet({ open: true })}>
+              <Plus /> Nova transação
+            </Button>
+          </div>
         )}
       </div>
+      <ImportInvoiceDialog open={importOpen} onClose={() => setImportOpen(false)} />
 
       <div className="flex justify-center sm:justify-start">
         <MonthPicker value={search.month} onChange={(month) => setSearch({ month })} />

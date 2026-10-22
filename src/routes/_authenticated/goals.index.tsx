@@ -62,7 +62,7 @@ function GoalsPage() {
             const perMonth = monthlyToReach(g, now)
             const reached = g.saved >= g.target_amount
             return (
-              <Link key={g.id} to="/goals/$goalId" params={{ goalId: g.id }} className="block">
+              <Link key={g.id} to="/goals/$goalId" params={{ goalId: g.id }} className="block min-w-0">
                 <Card className="space-y-3 transition-colors hover:bg-muted/40">
                   <div className="flex items-center gap-3">
                     <span className="flex size-10 items-center justify-center rounded-full text-lg" style={{ backgroundColor: `${g.color}22` }}>

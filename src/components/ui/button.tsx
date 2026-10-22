@@ -15,7 +15,8 @@ const buttonVariants = cva(
       },
       size: {
         default: 'h-10 px-4',
-        sm: 'h-8 px-3',
+        // Um pouco maior no celular (toque); compacto a partir de sm.
+        sm: 'h-9 px-3 sm:h-8',
         icon: 'size-9',
       },
     },

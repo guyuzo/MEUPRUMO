@@ -7,6 +7,7 @@ Nome definido em `src/config/app.ts`.
 
 - **Início**: resumo do mês (ganhos, gastos, resultado, comparação com o mês anterior), gráfico acumulado, gastos por categoria × orçamento, próximos vencimentos, primeiros passos para contas novas.
 - **Transações**: formulário em linhas (Descrição, Valor, Forma de Pagamento, Cartão, Data, "Fatura em", parcelamento, Corresponde/Dividir, Anotação). Crédito vira compra no cartão com fatura automática ou escolhida (mês da compra / seguinte / 2 meses); demais formas saem da conta. Valor só aceita números (máscara de moeda).
+- **Importar fatura fechada** (Transações ou tela do cartão): arquivo OFX ou CSV do banco, lido no navegador. Revisão antes de importar (duplicados e pagamento da fatura desmarcados, estornos, categoria sugerida pelo histórico), importação atômica, reimportar não duplica e cada importação pode ser desfeita.
 - **Contas**: saldo atual e previsto, extrato mensal, arquivar.
 - **Cartões**: faturas automáticas por fechamento/vencimento, parcelamento, estorno, pagamento total/parcial, limite disponível.
 - **Fluxo de caixa**: 2 meses passados + 6 futuros, com projeção de saldo (pendentes, recorrências, faturas).

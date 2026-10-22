@@ -46,7 +46,8 @@ export function FormRow({
 }
 
 export const rowInputClass =
-  'w-full min-w-0 bg-transparent text-right text-sm text-foreground placeholder:text-muted-foreground focus:outline-none'
+  // min-h-10: a área de toque cobre a altura útil da linha, não só o texto.
+  'min-h-10 w-full min-w-0 bg-transparent text-right text-sm text-foreground placeholder:text-muted-foreground focus:outline-none'
 
 /** Select compacto para dentro de FormRow (texto à direita), com a lista do app. */
 export function RowSelect(props: ComponentProps<typeof Select>) {
@@ -86,7 +87,7 @@ export function Toggle({
 /** Opção marcável em linha (como "Mês da compra / Mês seguinte"). */
 export function CheckChip({ checked, onClick, children }: { checked: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" role="radio" aria-checked={checked} onClick={onClick} className="flex items-center gap-1.5 text-sm">
+    <button type="button" role="radio" aria-checked={checked} onClick={onClick} className="flex min-h-10 items-center gap-1.5 text-sm">
       <span
         className={cn(
           'flex size-4 items-center justify-center rounded border',

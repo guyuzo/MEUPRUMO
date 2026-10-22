@@ -21,6 +21,12 @@
   --color-primary: #0d4d3b;
   --color-primary-foreground: #f8f5ec;
   --color-accent: #c9a96e;
+
+  /* Menu lateral (igual nos dois temas): Verde Equilíbrio, texto creme, item ativo em Verde Prumo.
+     Contrastes: creme 90% 5,1 · creme sobre ativo 9,0 · hover 6,3. */
+  --color-sidebar: #1f6b56;
+  --color-sidebar-foreground: #f8f5ec;
+  --color-sidebar-active: #0d4d3b;
   --color-income: #1f6b56;
   --color-expense: #b42f33;
   --color-destructive: #b42f33;
@@ -49,6 +55,9 @@
   --color-income: #7cc4a0;
   --color-expense: #f07a7d;
   --color-destructive: #f07a7d;
+  /* Menu no escuro: Verde Prumo; item ativo em Verde Equilíbrio (creme sobre ele: 5,9). */
+  --color-sidebar: #0d4d3b;
+  --color-sidebar-active: #1f6b56;
   --color-series-1: #3987e5;
   --color-series-2: #d95926;
   --color-chart-grid: #222c28;
@@ -56,6 +65,18 @@
 
 body {
   @apply bg-background text-foreground antialiased;
+}
+
+/*
+ * Mobile: campos com fonte < 16px fazem o Safari do iPhone dar zoom ao tocar.
+ * Fora de camada (unlayered) para valer sobre as classes text-sm do Tailwind.
+ */
+@media (max-width: 639px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 @media print {

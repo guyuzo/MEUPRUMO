@@ -30,6 +30,13 @@ export function invoiceDates(purchase: string, closingDay: number, dueDay: numbe
   }
 }
 
+/** Datas de fechamento e vencimento de uma fatura pelo mês de referência (espelho de ensure_invoice_for_month). */
+export function invoiceDatesForReference(referenceMonth: string, closingDay: number, dueDay: number): InvoiceDates {
+  const ref = startOfMonth(parseISO(referenceMonth))
+  const closingMonth = dueDay > closingDay ? ref : addMonths(ref, -1)
+  return { referenceMonth: iso(ref), closingOn: iso(clampDay(closingMonth, closingDay)), dueOn: iso(clampDay(ref, dueDay)) }
+}
+
 /** Meses entre o mês da compra e o mês da fatura (0 = "mês da compra"). */
 export function invoiceOffset(purchase: string, referenceMonth: string): number {
   const p = parseISO(purchase)

@@ -62,7 +62,7 @@ function RequestLinkForm() {
           </Button>
         </form>
       )}
-      <Link to="/auth/login" className="mt-6 inline-block text-sm text-primary hover:underline">
+      <Link to="/auth/login" className="mt-6 inline-block text-sm text-primary hover:underline py-3">
         Voltar para o login
       </Link>
     </AuthLayout>

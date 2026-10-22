@@ -50,7 +50,7 @@ function ReportPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <BackLink to="/settings" label="Configurações" />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <MonthPicker value={month} onChange={(m) => navigate({ search: { month: m }, replace: true })} />
           <Button onClick={() => window.print()} disabled={transactions.isPending}>
             <Printer /> Imprimir / PDF

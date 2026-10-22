@@ -21,6 +21,7 @@ import {
 import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
+import { BankLogo } from '@/components/cards/BankLogo'
 import { CardFormDialog } from '@/components/cards/CardFormDialog'
 import { equalSplit, SplitEditor, splitsTotal, type SplitDraft } from '@/components/family/MemberSplitField'
 import { CategoryPicker } from '@/components/planning/CategoryPicker'
@@ -315,7 +316,7 @@ function TransactionFormSheetContent({
                 disabled={isParcel}
                 onClick={() => setMode(value)}
                 className={cn(
-                  'rounded-lg px-2 py-2 text-sm font-medium',
+                  'min-w-0 rounded-lg px-1 py-2 text-sm font-medium',
                   mode === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted',
                 )}
               >
@@ -398,7 +399,7 @@ function TransactionFormSheetContent({
                         options={cards.map((c) => ({
                           value: c.id,
                           label: c.name,
-                          color: c.color,
+                          icon: (size: 'sm' | 'md') => <BankLogo bank={c.bank} color={c.color} size={size} />,
                           description: [c.bank, c.last_four && `•••• ${c.last_four}`, `fecha dia ${c.closing_day}`].filter(Boolean).join(' · '),
                         }))}
                         footer={(closeList) => (
@@ -423,8 +424,9 @@ function TransactionFormSheetContent({
               </FormRow>
               {auto && reference && card && (
                 <>
-                  <FormRow icon={CalendarDays} label="Fatura em">
-                    <div className="flex flex-wrap justify-end gap-x-4 gap-y-1" role="radiogroup" aria-label="Fatura em">
+                  {/* Empilhado: no celular as 3 opções não cabem ao lado do rótulo. */}
+                  <FormRow icon={CalendarDays} label="Fatura em" stacked>
+                    <div className="flex flex-wrap gap-x-5" role="radiogroup" aria-label="Fatura em">
                       {(['Mês da compra', 'Mês seguinte', '2 meses'] as const).map((label, offset) => (
                         <CheckChip
                           key={label}

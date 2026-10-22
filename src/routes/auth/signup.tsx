@@ -50,7 +50,7 @@ function SignupPage() {
   if (pendingEmail) {
     return (
       <AuthLayout title="Confirme seu e-mail" subtitle={`Enviamos um link de confirmação para ${pendingEmail}.`}>
-        <Link to="/auth/login" search={{ redirect }} className="text-sm text-primary hover:underline">
+        <Link to="/auth/login" search={{ redirect }} className="text-sm text-primary hover:underline py-3">
           Voltar para o login
         </Link>
       </AuthLayout>
@@ -89,7 +89,7 @@ function SignupPage() {
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Já tem conta?{' '}
-        <Link to="/auth/login" search={{ redirect }} className="text-primary hover:underline">
+        <Link to="/auth/login" search={{ redirect }} className="text-primary hover:underline py-3">
           Entrar
         </Link>
       </p>

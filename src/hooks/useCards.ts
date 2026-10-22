@@ -69,13 +69,11 @@ export function limitUsed(cardId: string, invoices: InvoiceSummary[]) {
 export interface CardInput {
   name: string
   bank: string | null
-  brand: string | null
   last_four: string | null
   credit_limit: number | null
   closing_day: number
   due_day: number
   color: string
-  default_account_id: string | null
 }
 
 export interface CardPurchaseInput {

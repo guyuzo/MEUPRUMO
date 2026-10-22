@@ -113,7 +113,7 @@ export function BudgetProgress({
     <Card className="space-y-4">
       <div className="flex items-center justify-between">
         <CardTitle>Gastos por categoria</CardTitle>
-        <Link to="/categories" search={{ month, tab: 'expense' }} className="text-xs text-primary hover:underline">
+        <Link to="/budget" search={{ month }} className="text-xs text-primary hover:underline py-3">
           Orçamento
         </Link>
       </div>

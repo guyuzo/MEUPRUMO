@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { invoiceDates, invoiceOffset, invoiceStatus, referenceFromOffset, splitInstallments } from './invoice'
+import { invoiceDates, invoiceDatesForReference, invoiceOffset, invoiceStatus, referenceFromOffset, splitInstallments } from './invoice'
 
 describe('invoiceDates', () => {
   it('fechamento 3, vencimento 10: antes do fechamento cai na fatura do mês', () => {
@@ -36,6 +36,20 @@ describe('invoiceDates', () => {
       closingOn: '2027-02-28',
       dueOn: '2027-03-10',
     })
+  })
+})
+
+describe('invoiceDatesForReference', () => {
+  it('é o inverso de invoiceDates', () => {
+    for (const [purchase, closing, due] of [
+      ['2026-10-02', 3, 10],
+      ['2026-10-20', 25, 5],
+      ['2026-12-28', 25, 5],
+      ['2027-02-10', 31, 10],
+    ] as const) {
+      const forward = invoiceDates(purchase, closing, due)
+      expect(invoiceDatesForReference(forward.referenceMonth, closing, due)).toEqual(forward)
+    }
   })
 })
 

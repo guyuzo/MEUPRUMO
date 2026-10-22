@@ -179,7 +179,9 @@ function SrTable({
   caption: string
 }) {
   return (
-    <table className="sr-only">
+    // Tabela não aceita a largura de 1px do sr-only (vazava a página no celular): esconde por um div.
+    <div className="sr-only">
+    <table>
       <caption>{caption}</caption>
       <thead>
         <tr>
@@ -202,5 +204,6 @@ function SrTable({
         ))}
       </tbody>
     </table>
+    </div>
   )
 }

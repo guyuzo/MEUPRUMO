@@ -123,16 +123,25 @@ function WishlistPage() {
                         disabled={!canEdit}
                         onClick={() => togglePurchased(item)}
                         aria-label={item.purchased_at ? 'Desmarcar como comprado' : 'Marcar como comprado'}
-                        className={cn(
-                          'flex size-5 shrink-0 items-center justify-center rounded border border-input',
-                          item.purchased_at && 'border-primary bg-primary text-primary-foreground',
-                        )}
+                        // Área de toque de 40px com a caixinha visual de 20px no centro.
+                        className="-m-2.5 flex size-10 shrink-0 items-center justify-center"
                       >
-                        {item.purchased_at && <Check className="size-3.5" />}
+                        <span
+                          className={cn(
+                            'flex size-5 items-center justify-center rounded border border-input',
+                            item.purchased_at && 'border-primary bg-primary text-primary-foreground',
+                          )}
+                        >
+                          {item.purchased_at && <Check className="size-3.5" />}
+                        </span>
                       </button>
                       <div className="min-w-0 flex-1">
-                        <p className={cn('truncate text-sm', item.purchased_at && 'line-through')}>{item.name}</p>
+                        <p className={cn('line-clamp-2 break-words text-sm sm:line-clamp-1', item.purchased_at && 'line-through')}>
+                          {item.name}
+                        </p>
                         <p className="truncate text-xs text-muted-foreground">
+                          {/* Celular: preço aqui, embaixo do nome (a coluna da direita fica só com os ícones). */}
+                          {item.price != null && <span className="font-medium text-foreground sm:hidden">{formatCents(item.price)} · </span>}
                           Prioridade {PRIORITY[item.priority].toLowerCase()}
                           {item.notes && ` · ${item.notes}`}
                         </p>
@@ -143,12 +152,12 @@ function WishlistPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           aria-label={`Abrir link de ${item.name}`}
-                          className="shrink-0 text-muted-foreground hover:text-foreground"
+                          className="-m-2 flex size-10 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
                         >
                           <ExternalLink className="size-4" />
                         </a>
                       )}
-                      {item.price != null && <span className="shrink-0 text-sm tabular-nums">{formatCents(item.price)}</span>}
+                      {item.price != null && <span className="hidden shrink-0 text-sm tabular-nums sm:inline">{formatCents(item.price)}</span>}
                       {canEdit && (
                         <Button
                           variant="ghost"

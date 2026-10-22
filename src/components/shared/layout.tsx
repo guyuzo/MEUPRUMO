@@ -18,7 +18,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 
 export function BackLink({ to, label }: { to: string; label: string }) {
   return (
-    <Link to={to as never} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+    <Link to={to as never} className="inline-flex min-h-10 items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
       <ArrowLeft className="size-4" /> {label}
     </Link>
   )

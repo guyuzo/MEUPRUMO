@@ -48,7 +48,7 @@ function AccountDetailPage() {
 
   return (
     <div className="space-y-5">
-      <Link to="/accounts" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link to="/accounts" className="inline-flex min-h-10 items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> Contas
       </Link>
 

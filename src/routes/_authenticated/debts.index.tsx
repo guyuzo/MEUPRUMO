@@ -68,7 +68,7 @@ function DebtsPage() {
           {[...open, ...done].map((d) => {
             const finished = Boolean(d.paid_off_at) || d.remaining === 0
             return (
-              <Link key={d.id} to="/debts/$debtId" params={{ debtId: d.id }} className="block">
+              <Link key={d.id} to="/debts/$debtId" params={{ debtId: d.id }} className="block min-w-0">
                 <Card className="space-y-3 transition-colors hover:bg-muted/40">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">

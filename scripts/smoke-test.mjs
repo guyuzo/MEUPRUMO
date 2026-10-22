@@ -418,6 +418,34 @@ try {
     await a.client.storage.from('avatars').remove([path])
   }
 
+  // --- Importação de fatura fechada ---
+  {
+    const { data: cardI } = await a.client.from('cards').insert({ household_id: hhA, name: 'Imp', closing_day: 3, due_day: 10 }).select('id').single()
+    const rows = [
+      { kind: 'card_purchase', occurred_on: '2026-09-05', description: 'Padaria', amount: 1500, external_id: 'f1' },
+      { kind: 'card_purchase', occurred_on: '2026-09-20', description: 'Posto', amount: 20000, external_id: 'f2' },
+      { kind: 'card_refund', occurred_on: '2026-09-22', description: 'Estorno', amount: 500, external_id: 'f3' },
+    ]
+    const { data: r1, error: e1 } = await a.client.rpc('import_card_statement', { p_card_id: cardI.id, p_reference_month: '2026-10-01', p_file_name: 'fatura.ofx', p_rows: rows })
+    check('importa fatura (3 linhas, total líquido)', !e1 && r1?.inserted === 3 && r1?.total === 21000, { e1, r1 })
+    const { data: invI } = await a.client.from('invoice_summaries').select('total, reference_month').eq('card_id', cardI.id)
+    check('lançamentos caem na fatura escolhida', invI?.length === 1 && invI[0].reference_month === '2026-10-01' && invI[0].total === 21000, invI)
+
+    const { data: r2 } = await a.client.rpc('import_card_statement', { p_card_id: cardI.id, p_reference_month: '2026-10-01', p_file_name: 'fatura.ofx', p_rows: rows })
+    check('reimportar o mesmo arquivo não duplica', r2?.inserted === 0 && r2?.batch_id === null, r2)
+
+    const { error: bImp } = await b.client.rpc('import_card_statement', { p_card_id: cardI.id, p_reference_month: '2026-10-01', p_file_name: 'x', p_rows: [{ kind: 'card_purchase', occurred_on: '2026-09-01', description: 'x', amount: 1, external_id: 'zz' }] })
+    check('quem não é da casa não importa', Boolean(bImp))
+
+    const { error: badKind } = await a.client.rpc('import_card_statement', { p_card_id: cardI.id, p_reference_month: '2026-10-01', p_file_name: 'x', p_rows: [{ kind: 'income', occurred_on: '2026-09-01', description: 'x', amount: 1, external_id: 'k1' }] })
+    const { count: incomeOnCard } = await admin.from('transactions').select('*', { count: 'exact', head: true }).eq('card_id', cardI.id).eq('kind', 'income')
+    check('só aceita compra/estorno de cartão', incomeOnCard === 0, badKind)
+
+    await a.client.from('import_batches').delete().eq('id', r1.batch_id)
+    const { count: left } = await admin.from('transactions').select('*', { count: 'exact', head: true }).eq('card_id', cardI.id)
+    check('desfazer importação remove os lançamentos', left === 0, left)
+  }
+
   // --- Exclusão de uma casa com dados de todos os módulos (regressão do bug de FK) ---
   {
     const c = await makeUser('c')

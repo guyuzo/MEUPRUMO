@@ -1,4 +1,4 @@
-import { useRef, type InputHTMLAttributes } from 'react'
+import { useRef, useState, type InputHTMLAttributes } from 'react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
@@ -51,6 +51,10 @@ export function MoneyInput({
   bare?: boolean
 } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
   const atFocus = useRef<number | null>(value)
+  // Enquanto focado, o campo guarda o que está sendo digitado. Assim funciona tanto
+  // controlado (onChange) quanto só com onCommit (salva ao sair, ex.: orçamento).
+  const [draft, setDraft] = useState<{ value: number | null } | null>(null)
+  const shown = draft ? draft.value : value
 
   const input = (
     <Input
@@ -58,7 +62,7 @@ export function MoneyInput({
       inputMode="numeric"
       autoComplete="off"
       placeholder={placeholder}
-      value={displayCents(value)}
+      value={displayCents(shown)}
       onKeyDown={(e) => {
         const allowed =
           e.ctrlKey || e.metaKey || ALLOWED_KEYS.has(e.key) || /^\d$/.test(e.key) || (allowNegative && e.key === '-')
@@ -68,6 +72,7 @@ export function MoneyInput({
       }}
       onFocus={(e) => {
         atFocus.current = value
+        setDraft({ value })
         // Seleciona tudo: digitar substitui o valor (em vez de juntar dígitos ao antigo).
         // rAF para a seleção sobreviver ao mouseup do clique.
         const el = e.currentTarget
@@ -76,15 +81,20 @@ export function MoneyInput({
         })
         onFocus?.(e)
       }}
-      onChange={(e) => onChange?.(maskToCents(e.target.value, allowNegative))}
+      onChange={(e) => {
+        const next = maskToCents(e.target.value, allowNegative)
+        setDraft({ value: next })
+        onChange?.(next)
+      }}
       onBlur={(e) => {
-        // No blur o componente já re-renderizou com o último valor digitado.
-        if (value !== atFocus.current) onCommit?.(value)
+        const final = draft ? draft.value : value
+        setDraft(null)
+        if (final !== atFocus.current) onCommit?.(final)
         onBlur?.(e)
       }}
       className={cn(
         'tabular-nums',
-        bare ? 'h-auto border-0 bg-transparent p-0 text-right shadow-none focus-visible:ring-0' : 'pl-9 text-right',
+        bare ? 'h-auto min-h-10 border-0 bg-transparent p-0 text-right shadow-none focus-visible:ring-0' : 'pl-9 text-right',
         className,
       )}
     />

@@ -38,16 +38,18 @@ const COLORS = [
 ]
 
 export function ColorPicker({ value, onChange }: { value: string; onChange: (color: string) => void }) {
+  // Cor fora da paleta (ex.: a cor do banco do cartão) aparece como primeira opção, marcada.
+  const colors = value && !COLORS.includes(value) ? [value, ...COLORS] : COLORS
   return (
     <div className="flex flex-wrap gap-2">
-      {COLORS.map((color) => (
+      {colors.map((color) => (
         <button
           key={color}
           type="button"
           onClick={() => onChange(color)}
           aria-label={color}
           aria-pressed={value === color}
-          className={cn('size-7 rounded-full', value === color && 'ring-2 ring-ring ring-offset-2 ring-offset-card')}
+          className={cn('size-9 rounded-full sm:size-7', value === color && 'ring-2 ring-ring ring-offset-2 ring-offset-card')}
           style={{ backgroundColor: color }}
         />
       ))}

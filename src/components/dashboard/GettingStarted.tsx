@@ -46,7 +46,7 @@ export function GettingStarted() {
     { done: cards.length > 0, label: 'Adicione seus cartões de crédito', to: '/cards', optional: true },
     { done: recurrences.length > 0, label: 'Cadastre contas fixas e salário (recorrências)', to: '/recurrences' },
     { done: Boolean(hasTransaction), label: 'Lance seus primeiros gastos', to: '/transactions' },
-    { done: (budgets?.byCategory.size ?? 0) > 0, label: 'Defina quanto quer gastar por categoria', to: '/categories' },
+    { done: (budgets?.byCategory.size ?? 0) > 0, label: 'Defina quanto quer gastar por categoria', to: '/budget' },
     { done: false, label: 'Convide quem divide as contas com você', to: '/members', optional: true },
   ]
   const required = steps.filter((s) => !s.optional)

@@ -96,8 +96,8 @@ function HouseholdName() {
   })
 
   return (
-    <Card className="flex flex-wrap items-end gap-3">
-      <div className="min-w-48 flex-1 space-y-1.5">
+    <Card className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <div className="min-w-0 flex-1 space-y-1.5">
         <label htmlFor="hh-name" className="text-sm font-medium">
           Nome da casa
         </label>
@@ -162,9 +162,16 @@ function PeopleSection({ isOwner }: { isOwner: boolean }) {
                 <p className="truncate text-xs text-muted-foreground">
                   {[m.relationship, m.user_id ? 'acessa o app' : 'sem acesso ao app'].filter(Boolean).join(' · ')}
                 </p>
+                {/* Celular: gasto embaixo do nome (a coluna da direita roubaria espaço do nome). */}
+                {canViewTx && (
+                  <p className="text-xs sm:hidden">
+                    <span className="font-semibold tabular-nums">{formatCents(spent)}</span>
+                    {total > 0 && <span className="text-muted-foreground"> · {Math.round((spent / total) * 100)}% dos gastos</span>}
+                  </p>
+                )}
               </div>
               {canViewTx && (
-                <div className="text-right">
+                <div className="hidden text-right sm:block">
                   <p className="text-sm font-semibold tabular-nums">{formatCents(spent)}</p>
                   {total > 0 && <p className="text-xs text-muted-foreground">{Math.round((spent / total) * 100)}% dos gastos</p>}
                 </div>

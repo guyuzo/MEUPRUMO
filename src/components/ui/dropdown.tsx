@@ -17,6 +17,8 @@ export interface DropdownOption {
   display?: string
   /** Termos extras para a busca, não exibidos. */
   keywords?: string
+  /** Ícone próprio (ex.: logo do banco), no lugar do emoji/bolinha. Recebe o tamanho de onde aparece. */
+  icon?: (size: 'sm' | 'md') => ReactNode
 }
 
 const SEARCH_THRESHOLD = 8
@@ -30,6 +32,7 @@ const normalize = (text: string) =>
     .toLowerCase()
 
 function OptionIcon({ option, size = 'md' }: { option: DropdownOption; size?: 'sm' | 'md' }) {
+  if (option.icon) return option.icon(size)
   if (option.emoji) {
     return (
       <span
@@ -217,7 +220,7 @@ export function Dropdown({
           'flex items-center gap-2 text-sm focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
           variant === 'field'
             ? 'h-10 w-full rounded-md border border-input bg-card px-3 text-left focus-visible:ring-2 focus-visible:ring-ring'
-            : 'ml-auto max-w-full rounded-md py-1 pl-2 pr-1 text-right font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring',
+            : 'ml-auto min-h-10 max-w-full rounded-md py-1 pl-2 pr-1 text-right font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring',
         )}
       >
         {selected && <OptionIcon option={selected} size="sm" />}
@@ -264,8 +267,9 @@ export function Dropdown({
           className={cn('overflow-y-auto p-1 focus:outline-none', sheet ? 'max-h-[60vh]' : '')}
           style={sheet ? undefined : { maxHeight: MAX_HEIGHT }}
         >
-          {filtered.length === 0 && <li className="px-3 py-6 text-center text-sm text-muted-foreground">Nada encontrado</li>}
-          {filtered.map((option, index) => {
+          {open && filtered.length === 0 && <li className="px-3 py-6 text-center text-sm text-muted-foreground">Nada encontrado</li>}
+          {/* Itens só montados com a lista aberta: telas com muitos dropdowns (ex.: importação) ficam leves. */}
+          {open && filtered.map((option, index) => {
             const isSelected = option.value === value
             return (
               <li

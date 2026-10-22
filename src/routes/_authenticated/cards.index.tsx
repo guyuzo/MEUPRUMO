@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { format, parseISO } from 'date-fns'
 import { Archive, ArchiveRestore, CreditCard, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { BankCardArt } from '@/components/cards/BankCardArt'
 import { CardFormDialog } from '@/components/cards/CardFormDialog'
 import { TransactionFormSheet } from '@/components/transactions/TransactionFormSheet'
 import { Button } from '@/components/ui/button'
@@ -47,9 +48,9 @@ function CardsPage() {
       </div>
 
       {cards.isPending ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {Array.from({ length: 2 }, (_, i) => (
-            <div key={i} className="h-40 animate-pulse rounded-lg bg-muted" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className="h-80 animate-pulse rounded-lg bg-muted" />
           ))}
         </div>
       ) : active.length === 0 ? (
@@ -63,7 +64,7 @@ function CardsPage() {
           )}
         </Box>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {active.map((card) => (
             <CardTile
               key={card.id}
@@ -137,19 +138,28 @@ function CardTile({
   const status = current ? invoiceStatus(current, today) : 'empty'
 
   return (
-    <Box className="space-y-4">
-      <div className="flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-md text-white" style={{ backgroundColor: card.color }}>
-          <CreditCard className="size-5" />
-        </span>
+    <Box className="space-y-4 p-4">
+      <Link to="/cards/$cardId" params={{ cardId: card.id }} className="block rounded-xl" aria-label={`Abrir ${card.name}`}>
+        <BankCardArt
+          bank={card.bank}
+          color={card.color}
+          title={card.name}
+          number={card.last_four ? `•••• ${card.last_four}` : null}
+          chip
+          fallbackIcon={CreditCard}
+        />
+      </Link>
+
+      <div className="flex items-start gap-2">
         <Link to="/cards/$cardId" params={{ cardId: card.id }} className="min-w-0 flex-1">
-          <p className="truncate font-medium hover:underline">{card.name}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {[card.bank, card.brand, card.last_four && `•••• ${card.last_four}`].filter(Boolean).join(' · ')}
+          <p className="text-xs text-muted-foreground">
+            Fatura atual · {INVOICE_STATUS_LABEL[status]}
+            {current && ` · vence ${format(parseISO(current.due_on), 'dd/MM')}`}
           </p>
+          <p className="mt-1 text-xl font-semibold tabular-nums">{formatCents(current?.total ?? 0)}</p>
         </Link>
         {canEdit && (
-          <div className="-mr-2 -mt-2 flex">
+          <div className="-mr-2 flex">
             <Button variant="ghost" size="icon" aria-label="Editar cartão" onClick={onEdit}>
               <Pencil />
             </Button>
@@ -159,14 +169,6 @@ function CardTile({
           </div>
         )}
       </div>
-
-      <Link to="/cards/$cardId" params={{ cardId: card.id }} className="block">
-        <p className="text-xs text-muted-foreground">
-          Fatura atual · {INVOICE_STATUS_LABEL[status]}
-          {current && ` · vence ${format(parseISO(current.due_on), 'dd/MM')}`}
-        </p>
-        <p className="mt-1 text-xl font-semibold tabular-nums">{formatCents(current?.total ?? 0)}</p>
-      </Link>
 
       {card.credit_limit != null && card.credit_limit > 0 && (
         <div>

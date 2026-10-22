@@ -47,7 +47,7 @@ export function Dialog({
               <h2 className="text-lg font-semibold">{title}</h2>
               {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="-mr-2 -mt-1">
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="-mr-2 -mt-1 shrink-0">
               <X />
             </Button>
           </div>

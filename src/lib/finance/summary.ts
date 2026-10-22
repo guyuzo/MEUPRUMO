@@ -99,6 +99,19 @@ export function spendingByCategory(rows: Tx[]): Map<string | null, number> {
 }
 
 // type (não interface) para ser atribuível a Record<string, number> nos gráficos.
+/** Gasto por subcategoria no mês (mesma regra de spendingByCategory). Sem subcategoria fica fora. */
+export function spendingBySubcategory(rows: (Tx & Pick<Transaction, 'subcategory_id'>)[]): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const t of rows) {
+    if (!t.subcategory_id) continue
+    const sign =
+      t.kind === 'expense_fixed' || t.kind === 'expense_variable' || t.kind === 'card_purchase' ? 1 : t.kind === 'card_refund' ? -1 : 0
+    if (!sign) continue
+    out.set(t.subcategory_id, (out.get(t.subcategory_id) ?? 0) + sign * t.amount)
+  }
+  return out
+}
+
 export type DailyPoint = {
   day: number
   income: number

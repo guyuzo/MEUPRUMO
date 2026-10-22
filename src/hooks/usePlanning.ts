@@ -109,7 +109,29 @@ export function useCategoryMutations() {
     onError,
   })
 
-  return { saveCategory, deleteCategory, saveSubcategory, deleteSubcategory }
+  /** Troca a posição de dois itens vizinhos (categorias ou subcategorias). */
+  const swapOrder = useMutation({
+    mutationFn: async ({
+      table,
+      a,
+      b,
+    }: {
+      table: 'categories' | 'subcategories'
+      a: { id: string; sort_order: number }
+      b: { id: string; sort_order: number }
+    }) => {
+      // Se as posições forem iguais (ex.: dados antigos), usa índices distintos.
+      const [orderA, orderB] = a.sort_order === b.sort_order ? [a.sort_order + 1, a.sort_order] : [b.sort_order, a.sort_order]
+      const first = await supabase.from(table).update({ sort_order: orderA }).eq('id', a.id)
+      if (first.error) throw first.error
+      const second = await supabase.from(table).update({ sort_order: orderB }).eq('id', b.id)
+      if (second.error) throw second.error
+    },
+    onSuccess: invalidate,
+    onError,
+  })
+
+  return { saveCategory, deleteCategory, saveSubcategory, deleteSubcategory, swapOrder }
 }
 
 export function useBudgetMutations(period: MonthKey) {

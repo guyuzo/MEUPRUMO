@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { TxDirection, TxKind, TxStatus } from '@/types/database'
 import { cashFlow, monthRange } from './cashflow'
 import { directionOf } from './labels'
-import { dailyCumulative, percentChange, spendingByCategory, summarizeMonth } from './summary'
+import { dailyCumulative, percentChange, spendingByCategory, spendingBySubcategory, summarizeMonth } from './summary'
 
 function tx(
   kind: TxKind,
@@ -64,6 +64,21 @@ describe('spendingByCategory', () => {
     ])
     expect(m.get('food')).toBe(130)
     expect(m.has('salary')).toBe(false)
+  })
+})
+
+describe('spendingBySubcategory', () => {
+  it('soma por subcategoria, abate estorno e ignora sem subcategoria', () => {
+    const rows = [
+      { ...tx('expense_variable', 100), subcategory_id: 'mercado' },
+      { ...tx('card_purchase', 50), subcategory_id: 'mercado' },
+      { ...tx('card_refund', 20), subcategory_id: 'mercado' },
+      { ...tx('expense_fixed', 999), subcategory_id: null },
+      { ...tx('income', 500), subcategory_id: 'salario' },
+    ]
+    const m = spendingBySubcategory(rows)
+    expect(m.get('mercado')).toBe(130)
+    expect(m.size).toBe(1)
   })
 })
 

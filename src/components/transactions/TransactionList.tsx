@@ -124,7 +124,8 @@ export function TransactionList({
                       {isTransfer ? <ArrowLeftRight className="size-4" /> : (category?.emoji ?? '•')}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{tx.description}</span>
+                      {/* Celular: até 2 linhas (a coluna é estreita); desktop: 1 linha. */}
+                      <span className="line-clamp-2 break-words text-sm font-medium sm:line-clamp-1">{tx.description}</span>
                       <span className="block truncate text-xs text-muted-foreground">
                         {subtitle}
                         {tx.status === 'pending' && tx.due_on && ` · vence ${format(parseISO(tx.due_on), 'dd/MM')}`}

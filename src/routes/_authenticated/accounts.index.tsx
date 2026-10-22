@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, Landmark, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, Landmark, Pencil, Plus, Trash2, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { AccountFormDialog } from '@/components/accounts/AccountFormDialog'
+import { BankCardArt } from '@/components/cards/BankCardArt'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ui/dialog'
@@ -52,9 +53,9 @@ function AccountsPage() {
       </Card>
 
       {accounts.isPending ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 2 }, (_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-lg bg-muted" />
+            <div key={i} className="h-72 animate-pulse rounded-lg bg-muted" />
           ))}
         </div>
       ) : active.length === 0 ? (
@@ -68,7 +69,7 @@ function AccountsPage() {
           )}
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {active.map((account) => (
             <AccountCard
               key={account.id}
@@ -134,17 +135,30 @@ function AccountCard({
   onArchive: () => void
 }) {
   return (
-    <Card className="relative overflow-hidden">
-      <span className="absolute inset-y-0 left-0 w-1" style={{ backgroundColor: account.color }} />
+    <Card className="space-y-4 p-4">
+      <Link to="/accounts/$accountId" params={{ accountId: account.id }} className="block rounded-xl" aria-label={`Abrir ${account.name}`}>
+        <BankCardArt
+          bank={account.bank}
+          color={account.color}
+          title={account.name}
+          subtitle={ACCOUNT_TYPE_LABEL[account.type]}
+          number={
+            [account.branch && `Ag ${account.branch}`, account.account_number && `•••• ${account.account_number.slice(-4)}`]
+              .filter(Boolean)
+              .join(' · ') || null
+          }
+          fallbackIcon={account.type === 'cash' ? Wallet : Landmark}
+        />
+      </Link>
       <div className="flex items-start gap-2">
         <Link to="/accounts/$accountId" params={{ accountId: account.id }} className="min-w-0 flex-1">
-          <p className="truncate font-medium hover:underline">{account.name}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {[ACCOUNT_TYPE_LABEL[account.type], account.bank].filter(Boolean).join(' · ')}
+          <p className="text-xs text-muted-foreground">Saldo atual</p>
+          <p className={cn('mt-1 text-xl font-semibold tabular-nums', account.balance < 0 && 'text-expense')}>
+            {formatCents(account.balance)}
           </p>
         </Link>
         {canEdit && (
-          <div className="-mr-2 -mt-2 flex">
+          <div className="-mr-2 flex">
             <Button variant="ghost" size="icon" aria-label="Editar conta" onClick={onEdit}>
               <Pencil />
             </Button>
@@ -154,9 +168,6 @@ function AccountCard({
           </div>
         )}
       </div>
-      <p className={cn('mt-4 text-xl font-semibold tabular-nums', account.balance < 0 && 'text-expense')}>
-        {formatCents(account.balance)}
-      </p>
       {account.pending_total !== 0 && (
         <p className="text-xs text-muted-foreground">
           Previsto: {formatCents(account.projected_balance)} ({account.pending_total > 0 ? '+' : ''}
