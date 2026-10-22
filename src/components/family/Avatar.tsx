@@ -1,5 +1,7 @@
 import { Camera } from 'lucide-react'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import { toast } from 'sonner'
+import { AvatarCropDialog } from '@/components/family/AvatarCropDialog'
 import { useAvatarMutations } from '@/hooks/useAvatars'
 import { cn } from '@/lib/utils'
 import type { HouseholdMember } from '@/types/database'
@@ -45,6 +47,8 @@ export function AvatarUpload({
 }) {
   const input = useRef<HTMLInputElement>(null)
   const { upload } = useAvatarMutations()
+  // Foto escolhida, esperando o ajuste (posição e zoom) antes de enviar.
+  const [picked, setPicked] = useState<File | null>(null)
 
   if (disabled) return <Avatar member={member} url={url} size={size} />
 
@@ -75,10 +79,22 @@ export function AvatarUpload({
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]
-          if (file) upload.mutate({ member, file })
+          if (file) {
+            if (file.type.startsWith('image/')) setPicked(file)
+            else toast.error('Escolha um arquivo de imagem.')
+          }
           e.target.value = ''
         }}
       />
+      {picked && (
+        <AvatarCropDialog
+          file={picked}
+          name={member.full_name}
+          pending={upload.isPending}
+          onCancel={() => setPicked(null)}
+          onConfirm={(crop) => upload.mutate({ member, file: picked, crop }, { onSuccess: () => setPicked(null) })}
+        />
+      )}
     </>
   )
 }

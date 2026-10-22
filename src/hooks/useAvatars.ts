@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useHousehold } from '@/hooks/useHousehold'
-import { squareThumbnail } from '@/lib/image'
+import { squareThumbnail, type SquareCrop } from '@/lib/image'
 import { supabase } from '@/lib/supabase'
 import type { HouseholdMember } from '@/types/database'
 
@@ -35,8 +35,8 @@ export function useAvatarMutations() {
   }
 
   const upload = useMutation({
-    mutationFn: async ({ member, file }: { member: HouseholdMember; file: File }) => {
-      const blob = await squareThumbnail(file)
+    mutationFn: async ({ member, file, crop }: { member: HouseholdMember; file: File; crop?: SquareCrop }) => {
+      const blob = await squareThumbnail(file, undefined, undefined, crop)
       // Nome novo a cada envio: evita cache de foto antiga.
       const path = `${member.household_id}/${member.id}/${crypto.randomUUID()}.jpg`
       const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg' })
