@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useHousehold } from '@/hooks/useHousehold'
 import { centsToDecimal, downloadFile, toCsv } from '@/lib/csv'
-import { shiftMonth, type MonthKey } from '@/lib/dates'
+import type { MonthKey } from '@/lib/dates'
 import { TX_KIND_LABEL } from '@/lib/finance/labels'
 import { supabase } from '@/lib/supabase'
 import type { Transaction } from '@/types/database'
@@ -25,7 +25,8 @@ export function useExportTransactions() {
           .order('occurred_on')
           .order('created_at')
           .range(from, from + PAGE - 1)
-        if (month) query = query.gte('occurred_on', month).lt('occurred_on', shiftMonth(month, 1))
+        // Mês de competência: compra no cartão entra no mês da fatura.
+        if (month) query = query.eq('competence_month', month)
         const { data, error } = await query
         if (error) throw error
         rows.push(...(data as Transaction[]))

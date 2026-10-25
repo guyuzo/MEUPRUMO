@@ -124,7 +124,8 @@ export function dailyCumulative(rows: Tx[], month: string): DailyPoint[] {
   const income = new Array<number>(days + 1).fill(0)
   const expenses = new Array<number>(days + 1).fill(0)
   for (const t of rows) {
-    const day = Number(t.occurred_on.slice(8, 10))
+    // Compra de mês anterior que cai na fatura deste mês entra no dia 1.
+    const day = t.occurred_on.slice(0, 7) === month.slice(0, 7) ? Number(t.occurred_on.slice(8, 10)) : 1
     const one = summarizeMonth([t])
     income[day] += one.income
     expenses[day] += one.expenses

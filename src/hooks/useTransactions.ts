@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { useHousehold } from '@/hooks/useHousehold'
-import { shiftMonth, type MonthKey } from '@/lib/dates'
+import type { MonthKey } from '@/lib/dates'
 import { supabase } from '@/lib/supabase'
 import type { PaymentMethod, Transaction, TxDirection, TxKind, TxStatus } from '@/types/database'
 
@@ -29,8 +29,8 @@ export function useTransactions(filters: TransactionFilters) {
         .from('transactions')
         .select('*')
         .eq('household_id', householdId)
-        .gte('occurred_on', filters.month)
-        .lt('occurred_on', shiftMonth(filters.month, 1))
+        // Mês de competência: compra no cartão aparece no mês da fatura em que será paga.
+        .eq('competence_month', filters.month)
         .order('occurred_on', { ascending: false })
         .order('created_at', { ascending: false })
 

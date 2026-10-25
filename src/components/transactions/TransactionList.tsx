@@ -105,6 +105,10 @@ export function TransactionList({
                     tx.subcategory_id && subName.get(tx.subcategory_id),
                     tx.bank_account_id && accountName.get(tx.bank_account_id),
                     tx.card_id && `💳 ${cardName.get(tx.card_id) ?? 'Cartão'}`,
+                    // Compra de outro mês que conta aqui por causa da fatura.
+                    tx.card_id &&
+                      tx.competence_month?.slice(0, 7) !== tx.occurred_on.slice(0, 7) &&
+                      `fatura ${format(parseISO(tx.competence_month), 'MMM/yy', { locale: ptBR })}`,
                     !tx.card_id && tx.payment_method && PAYMENT_METHOD_LABEL[tx.payment_method],
                     tx.household_member_id && memberName.get(tx.household_member_id),
                   ]

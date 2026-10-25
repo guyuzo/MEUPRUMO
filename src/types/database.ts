@@ -116,6 +116,8 @@ export interface Transaction {
   description: string
   notes: string | null
   occurred_on: string
+  /** Mês em que conta nas telas mensais (yyyy-MM-01): fatura do cartão ou mês da data. Preenchido pelo banco. */
+  competence_month: string
   due_on: string | null
   paid_on: string | null
   category_id: string | null
