@@ -74,8 +74,8 @@ export function Dropdown({
   onChange: (value: string) => void
   options: DropdownOption[]
   placeholder?: string
-  /** field = caixa com borda; row = texto à direita para usar dentro de FormRow. */
-  variant?: 'field' | 'row'
+  /** field = caixa com borda; row = texto à direita para usar dentro de FormRow; cell = célula de tabela editável. */
+  variant?: 'field' | 'row' | 'cell'
   disabled?: boolean
   searchable?: boolean
   className?: string
@@ -199,7 +199,7 @@ export function Dropdown({
   const activeId = filtered[active] ? `${listId}-${active}` : undefined
 
   return (
-    <div className={cn('relative min-w-0', variant === 'field' && 'w-full', className)}>
+    <div className={cn('relative min-w-0', (variant === 'field' || variant === 'cell') && 'w-full', className)}>
       <button
         ref={triggerRef}
         id={id}
@@ -220,7 +220,9 @@ export function Dropdown({
           'flex items-center gap-2 text-sm focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
           variant === 'field'
             ? 'h-10 w-full rounded-md border border-input bg-card px-3 text-left focus-visible:ring-2 focus-visible:ring-ring'
-            : 'ml-auto min-h-10 max-w-full rounded-md py-1 pl-2 pr-1 text-right font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring',
+            : variant === 'cell'
+              ? 'min-h-9 w-full rounded-md px-2 py-1 text-left hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring [&>svg:last-child]:opacity-0 hover:[&>svg:last-child]:opacity-100 focus-visible:[&>svg:last-child]:opacity-100'
+              : 'ml-auto min-h-10 max-w-full rounded-md py-1 pl-2 pr-1 text-right font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring',
         )}
       >
         {selected && <OptionIcon option={selected} size="sm" />}

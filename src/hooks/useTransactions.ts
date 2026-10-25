@@ -97,7 +97,9 @@ export interface TransactionInput {
   installments?: number
 }
 
-type SplitInput = { member_id: string; percentage: number }[] | null
+type QuickField = 'description' | 'category_id' | 'subcategory_id' | 'card_id' | 'bank_account_id' | 'household_member_id'
+
+type SplitInput ={ member_id: string; percentage: number }[] | null
 
 async function applySplits(transactionIds: string[], splits: SplitInput) {
   for (const id of transactionIds) {
@@ -188,5 +190,15 @@ export function useTransactionMutations() {
     onError: () => toast.error('Não foi possível atualizar o status.'),
   })
 
-  return { saveTransaction, deleteTransaction, togglePaid }
+  /** Edição rápida de um campo direto na lista (nome, categoria, cartão/conta, pessoa). */
+  const updateFields = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Pick<Transaction, QuickField>> }) => {
+      const { error } = await supabase.from('transactions').update(patch).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: invalidate,
+    onError: () => toast.error('Não foi possível salvar a alteração.'),
+  })
+
+  return { saveTransaction, deleteTransaction, togglePaid, updateFields }
 }

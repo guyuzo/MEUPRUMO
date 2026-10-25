@@ -19,7 +19,7 @@ export function CategoryPicker({
   categoryId: string
   subcategoryId: string
   onChange: (categoryId: string, subcategoryId: string) => void
-  variant?: 'field' | 'row'
+  variant?: 'field' | 'row' | 'cell'
 }) {
   const options: DropdownOption[] = [
     { value: '', label: 'Sem categoria', icon: (size) => <CategoryIcon icon="tag" color={null} size={size === 'md' ? 'sm' : 'xs'} /> },
