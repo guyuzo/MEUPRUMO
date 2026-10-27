@@ -3,6 +3,7 @@ import { AlertTriangle, FileUp, Lock, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { CategoryPicker } from '@/components/planning/CategoryPicker'
 import { MonthPicker } from '@/components/shared/pickers'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Dropdown } from '@/components/ui/dropdown'
@@ -322,9 +323,7 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
 
           <div className="flex items-center justify-between gap-2 text-sm">
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="size-4 accent-primary"
+              <Checkbox
                 checked={rows.filter((r) => r.kind !== 'payment').every((r) => r.include)}
                 onChange={(e) => setRows(rows.map((r) => (r.kind === 'payment' ? r : { ...r, include: e.target.checked })))}
               />
@@ -336,10 +335,8 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
           <ul className="max-h-[50vh] divide-y divide-border overflow-y-auto rounded-xl border border-border">
             {rows.map((r) => (
               <li key={r.id} className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2', !r.include && 'opacity-60')}>
-                <input
-                  type="checkbox"
+                <Checkbox
                   aria-label={`Importar ${r.description}`}
-                  className="size-4 shrink-0 accent-primary"
                   checked={r.include}
                   disabled={r.kind === 'payment'}
                   onChange={(e) => update(r.id, { include: e.target.checked })}

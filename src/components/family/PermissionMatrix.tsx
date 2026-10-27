@@ -1,3 +1,4 @@
+import { Checkbox } from '@/components/ui/checkbox'
 import { MODULES, type Module, type PermissionFlags } from '@/types/database'
 
 export const MODULE_LABEL: Record<Module, string> = {
@@ -34,10 +35,8 @@ export function PermissionMatrix({
           <tr key={m}>
             <td className="py-2">{MODULE_LABEL[m]}</td>
             <td className="text-center">
-              <input
-                type="checkbox"
+              <Checkbox
                 aria-label={`Ver ${MODULE_LABEL[m]}`}
-                className="size-4 accent-primary"
                 disabled={disabled}
                 checked={value[`can_view_${m}`]}
                 onChange={(e) =>
@@ -46,10 +45,8 @@ export function PermissionMatrix({
               />
             </td>
             <td className="text-center">
-              <input
-                type="checkbox"
+              <Checkbox
                 aria-label={`Editar ${MODULE_LABEL[m]}`}
-                className="size-4 accent-primary"
                 disabled={disabled}
                 checked={value[`can_edit_${m}`]}
                 onChange={(e) =>

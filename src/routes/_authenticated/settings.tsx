@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 import { Field, PageHeader } from '@/components/shared/layout'
 import { MonthPicker } from '@/components/shared/pickers'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
@@ -234,7 +235,7 @@ function ResetDialog({ onClose }: { onClose: () => void }) {
     <Dialog open onClose={onClose} title="Apagar todos os dados?" description="Esta ação não pode ser desfeita. Exporte um CSV antes, se quiser guardar o histórico.">
       <div className="space-y-4">
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" className="size-4 accent-primary" checked={keepCategories} onChange={(e) => setKeepCategories(e.target.checked)} />
+          <Checkbox checked={keepCategories} onChange={(e) => setKeepCategories(e.target.checked)} />
           Manter minhas categorias (desmarcado volta ao padrão)
         </label>
         <Field label='Digite "APAGAR" para confirmar' htmlFor="reset-confirm">

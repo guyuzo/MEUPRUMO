@@ -7,6 +7,7 @@ import { CategoryIcon } from '@/components/planning/CategoryIcon'
 import { CategoryPicker } from '@/components/planning/CategoryPicker'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ConfirmDialog } from '@/components/ui/dialog'
 import { Dropdown } from '@/components/ui/dropdown'
 import { useAccounts } from '@/hooks/useAccounts'
@@ -114,13 +115,9 @@ export function TransactionList({
     <div className={cn('space-y-4', selected.length > 0 && 'pb-24')}>
       {canEdit && (
         <label className="inline-flex min-h-9 cursor-pointer items-center gap-2 px-3 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            className="size-4 accent-primary"
+          <Checkbox
             checked={allSelected}
-            ref={(el) => {
-              if (el) el.indeterminate = selected.length > 0 && !allSelected
-            }}
+            indeterminate={selected.length > 0 && !allSelected}
             onChange={() => setPicked(allSelected ? new Set() : new Set(transactions.map((t) => t.id)))}
           />
           {selected.length > 0 ? `${selected.length} de ${transactions.length} selecionados` : `Selecionar todos (${transactions.length})`}
@@ -434,13 +431,7 @@ function TransactionRow({ tx, ctx }: { tx: Transaction; ctx: RowContext }) {
         {canEdit && (
           // Área de toque maior que a caixinha.
           <label className="-m-2 flex size-10 shrink-0 cursor-pointer items-center justify-center">
-            <input
-              type="checkbox"
-              className="size-4 accent-primary"
-              checked={ctx.isPicked(tx.id)}
-              onChange={() => ctx.togglePick(tx.id)}
-              aria-label={`Selecionar ${tx.description}`}
-            />
+            <Checkbox checked={ctx.isPicked(tx.id)} onChange={() => ctx.togglePick(tx.id)} aria-label={`Selecionar ${tx.description}`} />
           </label>
         )}
         {isTransfer || !category ? (

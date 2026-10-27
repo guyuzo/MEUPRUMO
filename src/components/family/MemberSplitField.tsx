@@ -1,3 +1,4 @@
+import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { equalPercentages } from '@/lib/finance/members'
@@ -46,10 +47,8 @@ export function SplitEditor({
         const pct = selected.get(m.id)
         return (
           <div key={m.id} className="flex items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               aria-label={`Incluir ${m.full_name}`}
-              className="size-4 accent-primary"
               checked={pct !== undefined}
               onChange={(e) => redistribute(e.target.checked ? [...selected.keys(), m.id] : [...selected.keys()].filter((x) => x !== m.id))}
             />
