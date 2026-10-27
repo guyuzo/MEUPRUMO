@@ -1,11 +1,13 @@
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ArrowLeftRight, CheckCircle2, ChevronRight, Circle, Tag } from 'lucide-react'
+import { ArrowLeftRight, CheckCircle2, ChevronRight, Circle, Tag, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { BankLogo } from '@/components/cards/BankLogo'
 import { CategoryIcon } from '@/components/planning/CategoryIcon'
 import { CategoryPicker } from '@/components/planning/CategoryPicker'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/ui/dialog'
 import { Dropdown } from '@/components/ui/dropdown'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useCards } from '@/hooks/useCards'
@@ -56,7 +58,9 @@ export function TransactionList({
   const members = useMembers().data ?? []
   const categories = useCategories().data ?? []
   const canEdit = usePermission('transactions', 'edit')
-  const { togglePaid, updateFields } = useTransactionMutations()
+  const { togglePaid, updateFields, updateMany, deleteMany } = useTransactionMutations()
+  const [picked, setPicked] = useState<Set<string>>(() => new Set())
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   if (loading) {
     return (
@@ -79,6 +83,18 @@ export function TransactionList({
     groups.set(tx.occurred_on, list)
   }
 
+  // Seleção só vale para o que está na tela (mudou o mês ou o filtro, some o que saiu).
+  const selected = transactions.filter((t) => picked.has(t.id))
+  const allSelected = selected.length === transactions.length
+  const toggle = (id: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const clear = () => setPicked(new Set())
+
   const ctx: RowContext = {
     accounts,
     cards,
@@ -90,13 +106,29 @@ export function TransactionList({
     togglePaid: (tx) => togglePaid.mutate(tx),
     togglePending: togglePaid.isPending,
     update: (id, patch) => updateFields.mutate({ id, patch }),
+    isPicked: (id) => picked.has(id),
+    togglePick: toggle,
   }
 
   return (
-    <div className="space-y-4">
+    <div className={cn('space-y-4', selected.length > 0 && 'pb-24')}>
+      {canEdit && (
+        <label className="inline-flex min-h-9 cursor-pointer items-center gap-2 px-3 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            className="size-4 accent-primary"
+            checked={allSelected}
+            ref={(el) => {
+              if (el) el.indeterminate = selected.length > 0 && !allSelected
+            }}
+            onChange={() => setPicked(allSelected ? new Set() : new Set(transactions.map((t) => t.id)))}
+          />
+          {selected.length > 0 ? `${selected.length} de ${transactions.length} selecionados` : `Selecionar todos (${transactions.length})`}
+        </label>
+      )}
       {/* Cabeçalho das colunas (só no desktop; no celular as colunas viram uma segunda linha). */}
       <div className={cn('hidden px-3 text-xs font-medium text-muted-foreground xl:grid xl:gap-2', GRID)}>
-        <span className="pl-12">Nome</span>
+        <span className={canEdit ? 'pl-[5.25rem]' : 'pl-12'}>Nome</span>
         <span className="px-2">Categoria</span>
         <span className="px-2">Cartão / conta</span>
         <span className="px-2">Pessoa</span>
@@ -115,6 +147,139 @@ export function TransactionList({
           </Card>
         </section>
       ))}
+
+      {canEdit && selected.length > 0 && (
+        <BulkBar
+          selected={selected}
+          cards={cards}
+          members={members}
+          categories={categories}
+          pending={updateMany.isPending || deleteMany.isPending}
+          onClear={clear}
+          onApply={(ids, patch) => updateMany.mutate({ ids, patch })}
+          onDelete={() => setConfirmDelete(true)}
+        />
+      )}
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        pending={deleteMany.isPending}
+        onConfirm={() =>
+          deleteMany.mutate(
+            selected.map((t) => t.id),
+            {
+              onSettled: () => {
+                setConfirmDelete(false)
+                clear()
+              },
+            },
+          )
+        }
+        title={`Excluir ${selected.length} lançamento${selected.length === 1 ? '' : 's'}?`}
+        description="Essa ação não pode ser desfeita. Parcelas excluídas aqui somem só da fatura em que estão."
+        confirmLabel="Excluir"
+      />
+    </div>
+  )
+}
+
+/**
+ * Barra flutuante para mudar vários lançamentos de uma vez. Cada mudança só se aplica a quem
+ * aceita aquele campo: categoria e pessoa a despesas/receitas (categoria do mesmo tipo),
+ * cartão às compras no cartão.
+ */
+function BulkBar({
+  selected,
+  cards,
+  members,
+  categories,
+  pending,
+  onClear,
+  onApply,
+  onDelete,
+}: {
+  selected: Transaction[]
+  cards: CreditCardT[]
+  members: HouseholdMember[]
+  categories: CategoryWithSubs[]
+  pending: boolean
+  onClear: () => void
+  onApply: (ids: string[], patch: Partial<Transaction>) => void
+  onDelete: () => void
+}) {
+  const categorized = selected.filter((t) => CATEGORIZED.includes(t.kind))
+  const incomes = categorized.filter((t) => t.kind === 'income')
+  const expenses = categorized.filter((t) => t.kind !== 'income')
+  // Seleção só de receitas mostra categorias de receita; com despesas, as de despesa.
+  const categoryKind = expenses.length > 0 ? 'expense' : 'income'
+  const categoryTargets = categoryKind === 'expense' ? expenses : incomes
+  const onCard = selected.filter((t) => t.kind === 'card_purchase' || t.kind === 'card_refund')
+
+  return (
+    <div className="fixed inset-x-0 bottom-20 z-40 flex justify-center px-3 lg:bottom-6" role="region" aria-label="Ações nos selecionados">
+      <Card className="flex w-full max-w-4xl flex-wrap items-center gap-2 border-primary/40 p-2 shadow-xl">
+        <span className="px-2 text-sm font-semibold tabular-nums">
+          {selected.length} selecionado{selected.length === 1 ? '' : 's'}
+        </span>
+        {categoryTargets.length > 0 && (
+          <div className="min-w-44 flex-1">
+            <CategoryPicker
+              variant="field"
+              categories={categories.filter((c) => c.kind === categoryKind)}
+              // Id inexistente: o botão mostra "Escolher" em vez de uma categoria.
+              categoryId="__bulk"
+              subcategoryId=""
+              onChange={(cat, sub) =>
+                onApply(
+                  categoryTargets.map((t) => t.id),
+                  { category_id: cat || null, subcategory_id: sub || null },
+                )
+              }
+            />
+          </div>
+        )}
+        {categorized.length > 0 && (
+          <div className="min-w-36 flex-1">
+            <Dropdown
+              aria-label="Pessoa dos selecionados"
+              value="__bulk"
+              placeholder="Pessoa…"
+              disabled={pending}
+              onChange={(id) => onApply(categorized.map((t) => t.id), { household_member_id: id || null })}
+              options={[{ value: '', label: 'Casa' }, ...members.map((m) => ({ value: m.id, label: m.full_name, color: m.color }))]}
+            />
+          </div>
+        )}
+        {onCard.length > 0 && (
+          <div className="min-w-40 flex-1">
+            <Dropdown
+              aria-label="Cartão dos selecionados"
+              value="__bulk"
+              placeholder="Cartão…"
+              disabled={pending}
+              onChange={(card_id) => onApply(onCard.map((t) => t.id), { card_id })}
+              options={cards
+                .filter((c) => !c.archived_at)
+                .map((c) => ({ value: c.id, label: c.name, icon: (size: 'sm' | 'md') => <BankLogo bank={c.bank} color={c.color} size={size} /> }))}
+            />
+          </div>
+        )}
+        <div className="ml-auto flex items-center gap-1">
+          <Button variant="ghost" size="icon" aria-label="Excluir selecionados" title="Excluir selecionados" onClick={onDelete} disabled={pending}>
+            <Trash2 />
+          </Button>
+          <Button variant="ghost" size="icon" aria-label="Limpar seleção" title="Limpar seleção" onClick={onClear}>
+            <X />
+          </Button>
+        </div>
+        {categoryTargets.length < selected.length && (
+          <p className="w-full px-2 text-[11px] text-muted-foreground">
+            Categoria vale para {categoryTargets.length} de {selected.length}
+            {incomes.length > 0 && expenses.length > 0 ? ' (receitas e despesas usam categorias diferentes)' : ''}
+            {onCard.length > 0 && onCard.length < selected.length ? ` · cartão vale para as ${onCard.length} compras no cartão` : ''}.
+          </p>
+        )}
+      </Card>
     </div>
   )
 }
@@ -136,6 +301,8 @@ interface RowContext {
   togglePaid: (tx: Transaction) => void
   togglePending: boolean
   update: (id: string, patch: Partial<Transaction>) => void
+  isPicked: (id: string) => boolean
+  togglePick: (id: string) => void
 }
 
 function TransactionRow({ tx, ctx }: { tx: Transaction; ctx: RowContext }) {
@@ -262,8 +429,20 @@ function TransactionRow({ tx, ctx }: { tx: Transaction; ctx: RowContext }) {
   )
 
   return (
-    <div className={cn('px-3 py-2 xl:grid xl:items-center xl:gap-2', GRID)}>
+    <div className={cn('px-3 py-2 xl:grid xl:items-center xl:gap-2', GRID, ctx.isPicked(tx.id) && 'bg-primary/5')}>
       <div className="flex min-w-0 items-center gap-3">
+        {canEdit && (
+          // Área de toque maior que a caixinha.
+          <label className="-m-2 flex size-10 shrink-0 cursor-pointer items-center justify-center">
+            <input
+              type="checkbox"
+              className="size-4 accent-primary"
+              checked={ctx.isPicked(tx.id)}
+              onChange={() => ctx.togglePick(tx.id)}
+              aria-label={`Selecionar ${tx.description}`}
+            />
+          </label>
+        )}
         {isTransfer || !category ? (
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
             {isTransfer ? <ArrowLeftRight className="size-4" strokeWidth={1.75} /> : <Tag className="size-4" strokeWidth={1.75} />}

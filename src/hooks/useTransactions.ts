@@ -200,5 +200,31 @@ export function useTransactionMutations() {
     onError: () => toast.error('Não foi possível salvar a alteração.'),
   })
 
-  return { saveTransaction, deleteTransaction, togglePaid, updateFields }
+  /** Mesma alteração em vários lançamentos de uma vez (seleção na lista). */
+  const updateMany = useMutation({
+    mutationFn: async ({ ids, patch }: { ids: string[]; patch: Partial<Pick<Transaction, QuickField>> }) => {
+      if (ids.length === 0) return
+      const { error } = await supabase.from('transactions').update(patch).in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: (_, { ids }) => {
+      invalidate()
+      toast.success(`${ids.length} lançamento${ids.length === 1 ? '' : 's'} atualizado${ids.length === 1 ? '' : 's'}.`)
+    },
+    onError: () => toast.error('Não foi possível alterar os lançamentos selecionados.'),
+  })
+
+  const deleteMany = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from('transactions').delete().in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: (_, ids) => {
+      invalidate()
+      toast.success(`${ids.length} lançamento${ids.length === 1 ? '' : 's'} excluído${ids.length === 1 ? '' : 's'}.`)
+    },
+    onError: () => toast.error('Não foi possível excluir os lançamentos selecionados.'),
+  })
+
+  return { saveTransaction, deleteTransaction, togglePaid, updateFields, updateMany, deleteMany }
 }
