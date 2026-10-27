@@ -114,8 +114,12 @@ export function spendingBySubcategory(rows: (Tx & Pick<Transaction, 'subcategory
 
 export type DailyPoint = {
   day: number
+  /** Acumulado até o dia. */
   income: number
   expenses: number
+  /** Só o que aconteceu no dia. */
+  dayIncome: number
+  dayExpenses: number
 }
 
 /** Acumulado diário de ganhos e gastos no mês, para o gráfico. */
@@ -136,7 +140,7 @@ export function dailyCumulative(rows: Tx[], month: string): DailyPoint[] {
   for (let day = 1; day <= days; day++) {
     inc += income[day]
     exp += expenses[day]
-    points.push({ day, income: inc, expenses: exp })
+    points.push({ day, income: inc, expenses: exp, dayIncome: income[day], dayExpenses: expenses[day] })
   }
   return points
 }

@@ -86,9 +86,15 @@ describe('dailyCumulative', () => {
   it('acumula por dia e cobre o mês inteiro', () => {
     const points = dailyCumulative([tx('income', 100, '2026-10-05'), tx('expense_variable', 30, '2026-10-07')], '2026-10-01')
     expect(points).toHaveLength(31)
-    expect(points[3]).toEqual({ day: 4, income: 0, expenses: 0 })
-    expect(points[6]).toEqual({ day: 7, income: 100, expenses: 30 })
-    expect(points[30]).toEqual({ day: 31, income: 100, expenses: 30 })
+    expect(points[3]).toEqual({ day: 4, income: 0, expenses: 0, dayIncome: 0, dayExpenses: 0 })
+    expect(points[4]).toEqual({ day: 5, income: 100, expenses: 0, dayIncome: 100, dayExpenses: 0 })
+    expect(points[6]).toEqual({ day: 7, income: 100, expenses: 30, dayIncome: 0, dayExpenses: 30 })
+    expect(points[30]).toEqual({ day: 31, income: 100, expenses: 30, dayIncome: 0, dayExpenses: 0 })
+  })
+
+  it('compra de mês anterior que conta neste mês (fatura) entra no dia 1', () => {
+    const points = dailyCumulative([tx('card_purchase', 50, '2026-09-20')], '2026-10-01')
+    expect(points[0]).toMatchObject({ day: 1, dayExpenses: 50, expenses: 50 })
   })
 })
 

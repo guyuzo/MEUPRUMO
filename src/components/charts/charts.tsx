@@ -43,9 +43,12 @@ export function Legend({ series }: { series: Series[] }) {
 
 interface TooltipLike {
   active?: boolean
-  payload?: readonly { dataKey?: unknown; value?: unknown }[]
+  payload?: readonly { dataKey?: unknown; value?: unknown; payload?: unknown }[]
   label?: unknown
 }
+
+/** Linhas extras no tooltip, calculadas a partir da linha de dados (ex.: "Gasto no dia"). */
+export type TooltipDetail = (row: Row) => [label: string, value: string][]
 
 function ChartTooltip({
   active,
@@ -53,11 +56,23 @@ function ChartTooltip({
   label,
   series,
   labelFormatter,
-}: TooltipLike & { series: Series[]; labelFormatter: (label: string | number) => string }) {
+  detail,
+}: TooltipLike & { series: Series[]; labelFormatter: (label: string | number) => string; detail?: TooltipDetail }) {
   if (!active || !payload?.length) return null
+  const extra = detail ? detail(payload[0].payload as Row) : []
   return (
     <div className="min-w-40 rounded-md border border-border bg-card px-3 py-2 text-xs shadow-md">
       <p className="mb-1.5 font-medium text-foreground">{labelFormatter(label as string | number)}</p>
+      {extra.length > 0 && (
+        <div className="mb-1.5 space-y-0.5 border-b border-border pb-1.5">
+          {extra.map(([l, v]) => (
+            <p key={l} className="flex items-center justify-between gap-4 text-muted-foreground">
+              <span>{l}</span>
+              <span className="font-semibold tabular-nums text-foreground">{v}</span>
+            </p>
+          ))}
+        </div>
+      )}
       {series.map((s) => {
         const item = payload.find((p) => p.dataKey === s.key)
         if (!item) return null
@@ -88,12 +103,14 @@ export function CumulativeLineChart({
   series,
   xLabel,
   title,
+  detail,
 }: {
   data: Row[]
   xKey: string
   series: Series[]
   xLabel: (x: number) => string
   title: string
+  detail?: TooltipDetail
 }) {
   return (
     <figure aria-label={title}>
@@ -105,7 +122,7 @@ export function CumulativeLineChart({
             <YAxis {...axisProps} width={72} tickFormatter={formatCentsCompact} />
             <Tooltip
               cursor={{ stroke: 'var(--color-muted-foreground)', strokeDasharray: '3 3' }}
-              content={(props) => <ChartTooltip {...props} series={series} labelFormatter={(l) => xLabel(Number(l))} />}
+              content={(props) => <ChartTooltip {...props} series={series} labelFormatter={(l) => xLabel(Number(l))} detail={detail} />}
             />
             {series.map((s) => (
               <Line
@@ -135,20 +152,31 @@ export function GroupedBarChart({
   series,
   xLabel,
   title,
+  tickLabel,
+  height = 'h-64',
 }: {
   data: Row[]
   xKey: string
   series: Series[]
   xLabel: (x: string) => string
   title: string
+  /** Texto curto no eixo (padrão: o mesmo do tooltip). */
+  tickLabel?: (x: string) => string
+  height?: string
 }) {
   return (
     <figure aria-label={title}>
-      <div className="h-64" aria-hidden>
+      <div className={height} aria-hidden>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barGap={2} barCategoryGap="24%">
             <CartesianGrid vertical={false} stroke="var(--color-chart-grid)" />
-            <XAxis dataKey={xKey} {...axisProps} tickFormatter={(x) => xLabel(String(x))} />
+            <XAxis
+              dataKey={xKey}
+              {...axisProps}
+              interval="preserveStartEnd"
+              minTickGap={16}
+              tickFormatter={(x) => (tickLabel ?? xLabel)(String(x))}
+            />
             <YAxis {...axisProps} width={72} tickFormatter={formatCentsCompact} />
             <Tooltip
               cursor={{ fill: 'var(--color-muted)' }}
