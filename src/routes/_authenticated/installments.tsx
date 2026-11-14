@@ -96,7 +96,17 @@ function PlanCard({ view, category }: { view: PlanView; category?: { emoji: stri
           <BankLogo bank={card?.bank} color={card?.color} />
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{plan.description}</p>
+          <p className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-medium">{plan.description}</span>
+            {view.detected && (
+              <span
+                className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+                title="Reconhecido pelo número da parcela na descrição (ex.: 3/12), não cadastrado como parcelamento"
+              >
+                pela descrição
+              </span>
+            )}
+          </p>
           <p className="truncate text-xs text-muted-foreground">
             {card ? (
               <Link to="/cards/$cardId" params={{ cardId: card.id }} className="hover:underline">

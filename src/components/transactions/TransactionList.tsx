@@ -16,6 +16,7 @@ import { useMembers } from '@/hooks/useFamily'
 import { usePermission } from '@/hooks/useHousehold'
 import { useCategories, type CategoryWithSubs } from '@/hooks/usePlanning'
 import { useTransactionMutations } from '@/hooks/useTransactions'
+import { lastInstallmentMonth, parseInstallment } from '@/lib/finance/installments'
 import { PAYMENT_METHOD_LABEL, TX_KIND_LABEL } from '@/lib/finance/labels'
 import type { Totals } from '@/lib/finance/totals'
 import { formatCents } from '@/lib/money'
@@ -316,8 +317,19 @@ function TransactionRow({ tx, ctx }: { tx: Transaction; ctx: RowContext }) {
         : 0
   const accountName = (id: string | null) => accounts.find((a) => a.id === id)?.name ?? '?'
 
+  // Parcela reconhecida pelo texto ("3/12", "Parcela 03 de 12"): mostra quantas faltam e quando acaba.
+  const installment = onCard && tx.kind === 'card_purchase' ? parseInstallment(tx.description) : null
+  const installmentNote =
+    installment &&
+    `Parcela ${installment.current}/${installment.total}${
+      installment.current < installment.total
+        ? ` · termina ${format(parseISO(lastInstallmentMonth(tx.competence_month ?? tx.occurred_on, installment)), 'MMM/yy', { locale: ptBR })}`
+        : ' · última'
+    }`
+
   // Linha de apoio embaixo do nome: o que não tem coluna própria.
   const meta = [
+    installmentNote,
     !categorized && TX_KIND_LABEL[tx.kind],
     isTransfer && `${accountName(tx.bank_account_id)} → ${accountName(tx.destination_account_id)}`,
     onCard &&

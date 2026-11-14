@@ -19,6 +19,7 @@ import {
 } from '@/hooks/useInvoiceImport'
 import { useCategories } from '@/hooks/usePlanning'
 import { formatMonthTitle, shiftMonth } from '@/lib/dates'
+import { parseInstallment } from '@/lib/finance/installments'
 import { invoiceDates, invoiceDatesForReference } from '@/lib/finance/invoice'
 import { extractPdfLines, isPdf, PdfPasswordError } from '@/lib/import/pdf'
 import { classifyLine, normalizeDescription, parsePdfLines, parseStatement, readStatementFile, type LineKind } from '@/lib/import/statement'
@@ -360,6 +361,15 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
                     {r.duplicate && <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Já lançado</Badge>}
                     {r.kind === 'payment' && <Badge className="bg-muted">Pagamento da fatura · não importa</Badge>}
                     {r.kind === 'refund' && <Badge className="bg-sky-500/15 text-sky-800 dark:text-sky-300">Estorno</Badge>}
+                    {r.kind === 'purchase' &&
+                      (() => {
+                        const parcel = parseInstallment(r.description)
+                        return parcel ? (
+                          <Badge className="bg-violet-500/15 text-violet-800 dark:text-violet-300">
+                            Parcela {parcel.current}/{parcel.total}
+                          </Badge>
+                        ) : null
+                      })()}
                   </p>
                 </div>
                 {r.kind !== 'payment' && (
