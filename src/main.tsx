@@ -4,6 +4,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Toaster } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { initPWA } from '@/lib/pwa'
 import { initTheme } from '@/lib/theme'
 import { RouteError } from './routes/__root'
 import { routeTree } from './routeTree.gen'
@@ -15,6 +16,7 @@ import '@fontsource/poppins/latin-700.css'
 import './index.css'
 
 initTheme()
+initPWA()
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },

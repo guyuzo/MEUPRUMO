@@ -1,6 +1,8 @@
 // Leitura de extratos de fatura de cartão (OFX, CSV e PDF), feita no navegador.
 // Convenção de saída: amount em centavos, POSITIVO = compra, NEGATIVO = crédito (pagamento/estorno).
 
+import { parseInstallment } from '@/lib/finance/installments'
+
 export interface StatementLine {
   /** yyyy-MM-dd */
   date: string
@@ -93,7 +95,7 @@ export function parseAmount(raw: string): number | null {
 
 /** Normaliza descrição para comparar (sem acento, minúscula, sem número de parcela). */
 export function normalizeDescription(text: string): string {
-  return text
+  return (parseInstallment(text)?.base ?? text)
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
@@ -287,8 +289,9 @@ export function parsePdfLines(textLines: string[], referenceMonth?: string): Par
     const date = pdfDate(dateMatch[1], referenceMonth)
     const value = parseAmount(amountMatch[1].replace(/[−–]/g, '-'))
     let description = row.slice(dateMatch[0].length, row.length - amountMatch[0].length).trim()
-    // Algumas faturas repetem o valor em dólar antes do valor em reais: tira o que sobrou de número no fim.
-    description = description.replace(/\s(?:US\$|USD)?\s?[\d.,]+$/i, '').trim()
+    // Algumas faturas repetem o valor em dólar antes do valor em reais: tira esse valor do fim.
+    // Só valor com centavos ("12,30", "US$ 12.30"): número inteiro pode ser parcela ("01 DE 02").
+    description = description.replace(/\s(?:US\$|USD)?\s?\d[\d.,]*[.,]\d{2}$/i, '').trim()
     if (!date || value == null || value === 0 || !description) continue
     if (PDF_SUMMARY.test(normalizeDescription(description))) continue
 

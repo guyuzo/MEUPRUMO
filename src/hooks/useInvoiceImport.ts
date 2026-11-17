@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useHousehold } from '@/hooks/useHousehold'
+import { parseInstallment } from '@/lib/finance/installments'
 import { normalizeDescription } from '@/lib/import/statement'
 import { supabase } from '@/lib/supabase'
 
@@ -58,8 +59,13 @@ export async function fetchExistingKeys(cardId: string, from: string, to: string
   }
 }
 
+/**
+ * Chave para achar lançamento repetido. Inclui o número da parcela: na fatura, a parcela 3/10 vem
+ * com a mesma data de compra e o mesmo valor da 2/10 do mês anterior, e não é duplicada.
+ */
 export function duplicateKey(date: string, amount: number, description: string) {
-  return `${date}|${amount}|${normalizeDescription(description)}`
+  const parcel = parseInstallment(description)
+  return `${date}|${amount}|${normalizeDescription(description)}|${parcel ? `${parcel.current}/${parcel.total}` : ''}`
 }
 
 export interface ImportRow {

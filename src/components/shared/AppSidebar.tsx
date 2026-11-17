@@ -25,6 +25,7 @@ import {
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Avatar } from '@/components/family/Avatar'
+import { InstallAppButton } from '@/components/shared/InstallAppButton'
 import { Logo } from '@/components/shared/Logo'
 import { ThemeToggle } from '@/components/shared/ThemeToggle'
 import { Dropdown } from '@/components/ui/dropdown'
@@ -234,6 +235,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
         ) : (
           <p className="truncate px-3 text-xs text-sidebar-foreground/90">{current.household.name}</p>
         )}
+        <InstallAppButton className="mt-2 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/90 hover:bg-sidebar-active/50 hover:text-sidebar-foreground" />
         <button
           type="button"
           onClick={() => supabase.auth.signOut()}

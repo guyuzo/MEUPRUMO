@@ -125,7 +125,7 @@ function useTextInstallments() {
         .is('installment_plan_id', null)
         .gte('competence_month', since)
         // Pré-filtro barato no banco; a regra exata fica em parseInstallment.
-        .or('description.like.%/%,description.ilike.%parc%,description.ilike.%prest%')
+        .or('description.like.%/%,description.ilike.%parc%,description.ilike.%prest%,description.ilike.%pcl%,description.ilike.% de %')
       if (error) throw error
       return data as LooseRow[]
     },

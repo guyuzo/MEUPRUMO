@@ -38,6 +38,19 @@ describe('parsePdfLines', () => {
     expect(lines[0]).toMatchObject({ date: '2026-10-20', description: 'Café', amount: 850 })
   })
 
+  it('mantém o número da parcela na descrição (inclusive "01 DE 02" e "1/2" no meio)', () => {
+    const { lines } = parsePdfLines(
+      [
+        '03/09 LOJAS RENNER 01 DE 02 150,00',
+        '04/09 MAGALU 02/10 SAO PAULO 89,90',
+        '05/09 TENIS NIKE 1/2 R$ 250,00',
+        '06/09 AMAZON US$ 12.30 61,50',
+      ],
+      ref,
+    )
+    expect(lines.map((l) => l.description)).toEqual(['LOJAS RENNER 01 DE 02', 'MAGALU 02/10 SAO PAULO', 'TENIS NIKE 1/2', 'AMAZON'])
+  })
+
   it('linhas iguais ganham ids diferentes; sem nada, avisa', () => {
     const { lines } = parsePdfLines(['01/10 CAFE 5,00', '01/10 CAFE 5,00'], ref)
     expect(new Set(lines.map((l) => l.externalId)).size).toBe(2)
@@ -84,6 +97,8 @@ describe('normalizeDescription', () => {
   it('ignora acento, caixa e número de parcela', () => {
     expect(normalizeDescription('LOJA DO JOSÉ 02/10')).toBe('loja do jose')
     expect(normalizeDescription('Loja do Jose - Parcela 3 de 10')).toBe('loja do jose')
+    expect(normalizeDescription('LOJAS RENNER 01 DE 02')).toBe('lojas renner')
+    expect(normalizeDescription('MAGALU 02/10 SAO PAULO')).toBe('magalu sao paulo')
   })
 })
 

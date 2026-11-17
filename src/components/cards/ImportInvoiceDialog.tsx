@@ -330,7 +330,13 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
               />
               Selecionar todos
             </label>
-            <span className="text-muted-foreground">{rows.length} linhas no arquivo</span>
+            <span className="text-muted-foreground">
+              {rows.length} linhas no arquivo
+              {(() => {
+                const parcels = rows.filter((r) => r.kind === 'purchase' && parseInstallment(r.description)).length
+                return parcels ? ` · ${parcels} parcela${parcels === 1 ? '' : 's'}` : ''
+              })()}
+            </span>
           </div>
 
           <ul className="max-h-[50vh] divide-y divide-border overflow-y-auto rounded-xl border border-border">
@@ -367,6 +373,9 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
                         return parcel ? (
                           <Badge className="bg-violet-500/15 text-violet-800 dark:text-violet-300">
                             Parcela {parcel.current}/{parcel.total}
+                            {parcel.current < parcel.total
+                              ? ` · faltam ${parcel.total - parcel.current}`
+                              : ' · última'}
                           </Badge>
                         ) : null
                       })()}

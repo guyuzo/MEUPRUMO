@@ -1,4 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [{ "source": "/((?!assets/|.*\\.[a-z0-9]+$).*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/((?!assets/|.*\\.[a-z0-9]+$).*)", "destination": "/index.html" }],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    }
+  ]
 }
