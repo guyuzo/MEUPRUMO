@@ -1,4 +1,4 @@
-import { format, parseISO } from 'date-fns'
+import { addMonths, format, parseISO } from 'date-fns'
 import { AlertTriangle, FileUp, Lock, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { CategoryPicker } from '@/components/planning/CategoryPicker'
@@ -13,7 +13,6 @@ import { useMembers } from '@/hooks/useFamily'
 import {
   duplicateKey,
   fetchExistingKeys,
-  parcelKey,
   PROJECTED_PREFIX,
   useCategorySuggestions,
   useInvoiceImportMutations,
@@ -25,6 +24,7 @@ import { formatMonthTitle, shiftMonth } from '@/lib/dates'
 import { parseInstallment, upcomingInstallments } from '@/lib/finance/installments'
 import { invoiceDates, invoiceDatesForReference } from '@/lib/finance/invoice'
 import { extractPdfLines, isPdf, PdfPasswordError } from '@/lib/import/pdf'
+import { findParcel, parcelKey, type ParcelIndex } from '@/lib/import/parcels'
 import { findSimilar, type Similar } from '@/lib/import/similar'
 import { classifyLine, normalizeDescription, parsePdfLines, parseStatement, readStatementFile, type LineKind } from '@/lib/import/statement'
 import { formatCents } from '@/lib/money'
@@ -46,6 +46,8 @@ interface ReviewRow {
   member_id: string
   /** Final do cartão (adicional/virtual) que algumas faturas mostram antes da descrição. */
   cardFinal: string | null
+  /** Texto como veio do banco (a pessoa pode renomear e tirar o "3/10"). */
+  bankDescription: string
   /** Parcela prevista (de uma fatura importada antes) que esta linha substitui. */
   replaces: string | null
   /** Gasto com o mesmo valor (no cartão ou repetido no arquivo): a pessoa responde se é o mesmo. */
@@ -59,22 +61,34 @@ type SimilarAnswer = 'keep' | 'replace' | 'different'
 type ExistingRow = ExistingKeys['rows'][number]
 
 /**
+ * Parcelas que ainda vêm de uma linha: pelo nome que a pessoa deu ou, se ela tirou o "3/10" ao
+ * renomear, pelo texto original do banco (aí o nome novo ganha " (4/10)", " (5/10)"…).
+ */
+function upcomingFor(description: string, bankDescription: string) {
+  const name = description.trim()
+  if (parseInstallment(name)) return upcomingInstallments(name)
+  const info = parseInstallment(bankDescription)
+  if (!info) return []
+  return upcomingInstallments(bankDescription).map((next) => ({ ...next, description: `${name} (${next.number}/${info.total})` }))
+}
+
+/**
  * Parcelas que ainda faltam das compras parceladas da fatura: cada uma vai para a fatura do mês em que
  * cai (3/10 na fatura de nov → 4/10 em dez … 10/10 em jun). Pula as que já estão no app ou no arquivo.
  */
-function buildProjections(rows: ReviewRow[], reference: string, existing: ExistingKeys['parcels']): ImportRow[] {
-  const inFile = new Set(rows.map((r) => parcelKey(r.date, r.description)).filter(Boolean))
+function buildProjections(rows: ReviewRow[], reference: string, existing: ParcelIndex): ImportRow[] {
+  const inFile = new Set(rows.flatMap((r) => [parcelKey(r.description), parcelKey(r.bankDescription)]).filter(Boolean))
   const out: ImportRow[] = []
   for (const r of rows) {
     // Já lançada também conta: reimportar uma fatura antiga completa as parcelas futuras que faltam.
     if (r.kind !== 'purchase' || !(r.include || r.duplicate)) continue
-    const description = r.description.trim()
-    for (const next of upcomingInstallments(description)) {
-      const key = parcelKey(r.date, next.description)
-      if (!key || existing.has(key) || inFile.has(key)) continue
+    for (const next of upcomingFor(r.description, r.bankDescription)) {
+      const key = parcelKey(next.description)
+      if (!key || inFile.has(key) || findParcel(existing, next.description, r.amount)) continue
       out.push({
         kind: 'card_purchase',
-        occurred_on: r.date,
+        // Data estimada (cada banco data as parcelas de um jeito); o que vale é a fatura.
+        occurred_on: format(addMonths(parseISO(r.date), next.monthsAhead), 'yyyy-MM-dd'),
         description: next.description,
         amount: r.amount,
         external_id: `${PROJECTED_PREFIX}${r.id}:${next.number}`.slice(0, 200),
@@ -154,7 +168,7 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
       }
       if (parsed.lines.length > MAX_ROWS) return setError(`O arquivo tem mais de ${MAX_ROWS} lançamentos.`)
       const sorted = [...parsed.lines].sort((a, b) => a.date.localeCompare(b.date))
-      const existing = await fetchExistingKeys(card.id, sorted[0].date, sorted[sorted.length - 1].date)
+      const existing = await fetchExistingKeys(card.id, sorted[0].date, sorted[sorted.length - 1].date, reference)
       // O histórico pode ainda estar carregando se o arquivo foi escolhido logo ao abrir.
       const suggest = suggestions.data ?? (await suggestions.refetch()).data
       setExistingParcels(existing.parcels)
@@ -162,19 +176,20 @@ function ImportInvoiceDialogContent({ onClose, defaultCardId }: { open: boolean;
       const reviewed: ReviewRow[] = sorted.map((line) => {
           const kind = classifyLine(line)
           const { cardFinal, description } = splitCardFinal(line.description)
-          // Parcela que uma fatura anterior já tinha previsto: a real entra no lugar dela.
-          const key = kind === 'purchase' ? parcelKey(line.date, description) : null
-          const known = key ? existing.parcels.get(key) : undefined
-          const replaces = known?.projected ? known.id : null
+          // Parcela que uma fatura anterior já tinha previsto para esta fatura: a real entra no lugar dela.
+          // Já lançada de verdade (mesmo nome, número e valor): duplicada.
+          const known = kind === 'purchase' ? findParcel(existing.parcels, description, line.amount) : undefined
+          const replaces = known?.projected && known.invoiceMonth === reference ? known.id : null
           const duplicate =
             !replaces &&
-            (Boolean(known) || existing.externalIds.has(line.externalId) || existing.keys.has(duplicateKey(line.date, line.amount, line.description)))
+            ((known != null && !known.projected) || existing.externalIds.has(line.externalId) || existing.keys.has(duplicateKey(line.date, line.amount, line.description)))
           const hint = suggest?.get(normalizeDescription(description)) ?? suggest?.get(normalizeDescription(line.description))
           return {
             id: line.externalId,
             date: line.date,
             description,
             cardFinal,
+            bankDescription: description,
             replaces,
             member_id: '',
             amount: line.amount,

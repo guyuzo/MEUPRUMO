@@ -3,6 +3,7 @@ import { addDays, format, parseISO } from 'date-fns'
 import { toast } from 'sonner'
 import { useHousehold } from '@/hooks/useHousehold'
 import { parseInstallment } from '@/lib/finance/installments'
+import { buildParcelIndex } from '@/lib/import/parcels'
 import { SIMILAR_WINDOW_DAYS } from '@/lib/import/similar'
 import { normalizeDescription } from '@/lib/import/statement'
 import { supabase } from '@/lib/supabase'
@@ -51,49 +52,59 @@ export const PROJECTED_PREFIX = 'proj:'
 
 export const isProjected = (externalId: string | null | undefined) => Boolean(externalId?.startsWith(PROJECTED_PREFIX))
 
-/**
- * Chave de uma parcela (sem o valor: a 1ª parcela pode ter centavos a mais). Os bancos repetem a data
- * da compra em todas as parcelas, então data + descrição base + "n/total" identifica a parcela.
- */
-export function parcelKey(date: string, description: string) {
-  const parcel = parseInstallment(description)
-  return parcel ? `${date}|${normalizeDescription(description)}|${parcel.current}/${parcel.total}` : null
-}
-
 const shiftDay = (date: string, days: number) => format(addDays(parseISO(date), days), 'yyyy-MM-dd')
 
-/** Lançamentos já existentes no cartão no período do arquivo (com folga), para marcar duplicados. */
-export async function fetchExistingKeys(cardId: string, from: string, to: string) {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('id, occurred_on, amount, description, external_id, kind, installment_plan_id, category_id, subcategory_id, household_member_id')
-    .eq('card_id', cardId)
-    .in('kind', ['card_purchase', 'card_refund'])
-    .gte('occurred_on', shiftDay(from, -SIMILAR_WINDOW_DAYS))
-    .lte('occurred_on', shiftDay(to, SIMILAR_WINDOW_DAYS))
-  if (error) throw error
-  // Candidatos a "mesmo valor": tudo menos as parcelas previstas (essas são tratadas pela parcela).
-  const rows = data
-    .filter((t) => !isProjected(t.external_id))
-    .map((t) => ({
-      id: t.id,
-      date: t.occurred_on,
-      description: t.description,
-      amount: t.kind === 'card_refund' ? -t.amount : t.amount,
-      inPlan: Boolean(t.installment_plan_id),
-      category_id: t.category_id as string | null,
-      subcategory_id: t.subcategory_id as string | null,
-      household_member_id: t.household_member_id as string | null,
-    }))
-  // Parcelas já no app: as previstas (de uma fatura anterior) são trocadas pela real; as reais são duplicadas.
-  const parcels = new Map<string, { id: string; projected: boolean }>()
-  for (const t of data) {
-    const key = t.kind === 'card_purchase' ? parcelKey(t.occurred_on, t.description) : null
-    if (key) parcels.set(key, { id: t.id, projected: isProjected(t.external_id) })
-  }
+const TX_FIELDS =
+  'id, occurred_on, amount, description, external_id, kind, installment_plan_id, category_id, subcategory_id, household_member_id, invoice_month'
+
+/**
+ * O que já está no cartão para comparar com o arquivo da fatura `reference`:
+ * - lançamentos do período do arquivo (com folga de dias): duplicados e "mesmo valor";
+ * - parcelas previstas desta fatura em diante (a data delas não serve: cada banco data as parcelas de um jeito).
+ */
+export async function fetchExistingKeys(cardId: string, from: string, to: string, reference: string) {
+  const [periodRes, projectedRes] = await Promise.all([
+    supabase
+      .from('transactions')
+      .select(TX_FIELDS)
+      .eq('card_id', cardId)
+      .in('kind', ['card_purchase', 'card_refund'])
+      .gte('occurred_on', shiftDay(from, -SIMILAR_WINDOW_DAYS))
+      .lte('occurred_on', shiftDay(to, SIMILAR_WINDOW_DAYS)),
+    supabase
+      .from('transactions')
+      .select(TX_FIELDS)
+      .eq('card_id', cardId)
+      .like('external_id', `${PROJECTED_PREFIX}%`)
+      .gte('invoice_month', reference),
+  ])
+  if (periodRes.error) throw periodRes.error
+  if (projectedRes.error) throw projectedRes.error
+  const period = periodRes.data.filter((t) => !isProjected(t.external_id))
+  const projected = projectedRes.data
+
+  const toRow = (t: (typeof projected)[number]) => ({
+    id: t.id,
+    date: t.occurred_on,
+    description: t.description,
+    amount: t.kind === 'card_refund' ? -t.amount : t.amount,
+    inPlan: Boolean(t.installment_plan_id),
+    projected: isProjected(t.external_id),
+    category_id: t.category_id as string | null,
+    subcategory_id: t.subcategory_id as string | null,
+    household_member_id: t.household_member_id as string | null,
+  })
+  // Candidatos a "mesmo valor": os do período e as previstas desta fatura.
+  const rows = [...period, ...projected.filter((t) => t.invoice_month === reference)].map(toRow)
+  // Parcelas já no app: as previstas são trocadas pela real; as reais são duplicadas.
+  const parcels = buildParcelIndex(
+    [...period, ...projected]
+      .filter((t) => t.kind === 'card_purchase')
+      .map((t) => ({ id: t.id, description: t.description, amount: t.amount, projected: isProjected(t.external_id), invoiceMonth: t.invoice_month })),
+  )
   return {
-    keys: new Set(data.map((t) => duplicateKey(t.occurred_on, t.kind === 'card_refund' ? -t.amount : t.amount, t.description))),
-    externalIds: new Set(data.map((t) => t.external_id).filter(Boolean) as string[]),
+    keys: new Set(period.map((t) => duplicateKey(t.occurred_on, t.kind === 'card_refund' ? -t.amount : t.amount, t.description))),
+    externalIds: new Set(period.map((t) => t.external_id).filter(Boolean) as string[]),
     parcels,
     rows,
   }

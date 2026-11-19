@@ -36,6 +36,12 @@ describe('findSimilar', () => {
     expect(result.has('a')).toBe(false)
   })
 
+  it('parcela prevista desta fatura: qualquer data e centavos de diferença (renomeada pela pessoa)', () => {
+    const projected = { ...tx('pr', '2026-11-17', 'Tablet - Parcela 3/10', 6490), projected: true }
+    const result = findSimilar([line('a', '2026-12-17', 'TIKTOK SHOP TABLET', 6491)], [projected], new Set())
+    expect(result.get('a')).toMatchObject({ source: 'existing', tx: { id: 'pr' } })
+  })
+
   it('pula linhas já reconhecidas como lançadas', () => {
     const result = findSimilar([line('a', '2026-10-10', 'MERCADO', 5000)], [tx('m1', '2026-10-10', 'Mercado', 5000)], new Set(['a']))
     expect(result.size).toBe(0)

@@ -1,5 +1,6 @@
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { parseInstallment } from '@/lib/finance/installments'
+import { amountsClose } from '@/lib/import/parcels'
 import { normalizeDescription } from '@/lib/import/statement'
 
 // Possíveis duplicados na importação de fatura: mesmo valor de um gasto que já está no cartão
@@ -27,6 +28,8 @@ export interface ExistingTx {
   amount: number
   /** Parcela de um parcelamento criado no app: não dá para trocar uma parcela solta. */
   inPlan: boolean
+  /** Parcela prevista para esta fatura: vale qualquer data e centavos de diferença. */
+  projected?: boolean
 }
 
 export type Similar =
@@ -65,9 +68,11 @@ export function findSimilar(lines: FileLine[], existing: ExistingTx[], skip: Set
     // Mesmo valor já lançado no cartão.
     let best: { tx: ExistingTx; gap: number } | null = null
     for (const tx of existing) {
-      if (used.has(tx.id) || tx.amount !== line.amount || differentParcel(tx.description, line.description)) continue
+      if (used.has(tx.id) || differentParcel(tx.description, line.description)) continue
+      if (tx.projected ? !amountsClose(tx.amount, line.amount) : tx.amount !== line.amount) continue
       const gap = Math.abs(differenceInCalendarDays(parseISO(tx.date), parseISO(line.date)))
-      if (gap <= SIMILAR_WINDOW_DAYS && (!best || gap < best.gap)) best = { tx, gap }
+      // Prevista: a data foi estimada, então só serve para desempatar.
+      if ((tx.projected || gap <= SIMILAR_WINDOW_DAYS) && (!best || gap < best.gap)) best = { tx, gap }
     }
     if (best) {
       used.add(best.tx.id)
