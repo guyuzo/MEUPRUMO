@@ -130,7 +130,7 @@ describe('cashFlow', () => {
     expect(rows[2].projectedBalance).toBe(0)
   })
 
-  it('pendente vencido conta como hoje e fatura parcialmente paga projeta só o restante', () => {
+  it('vencido e não pago fica no mês em que venceu; no saldo, desconta a partir de hoje', () => {
     const rows = cashFlow({
       months,
       transactions: [tx('expense_variable', 10000, '2026-09-20', { status: 'pending', due_on: '2026-09-25' })],
@@ -138,9 +138,38 @@ describe('cashFlow', () => {
       currentBalance: 100000,
       today: '2026-10-15',
     })
-    expect(rows[0].outflow).toBe(0)
-    expect(rows[1].outflow).toBe(30000)
+    expect(rows[0]).toMatchObject({ outflow: 10000, overdueOutflow: 10000, projectedBalance: null })
+    expect(rows[1]).toMatchObject({ outflow: 20000, overdueOutflow: 20000 })
     expect(rows[1].projectedBalance).toBe(70000)
+  })
+
+  it('fatura vencida de mês passado fica no mês dela, não no atual', () => {
+    const rows = cashFlow({
+      months,
+      transactions: [],
+      invoices: [{ total: 50000, paid: 0, due_on: '2026-10-24' }],
+      currentBalance: 100000,
+      today: '2026-11-19',
+    })
+    expect(rows.map((r) => r.outflow)).toEqual([0, 50000, 0])
+    expect(rows[2].projectedBalance).toBe(50000)
+  })
+
+  it('gasto pago sem conta aparece nas saídas, mas não muda o saldo', () => {
+    const rows = cashFlow({
+      months,
+      transactions: [tx('expense_variable', 7000, '2026-10-05', { bank_account_id: null })],
+      invoices: [],
+      currentBalance: 100000,
+      today: '2026-10-15',
+    })
+    expect(rows[1]).toMatchObject({ outflow: 7000, projectedBalance: 100000 })
+  })
+
+  it('pago no mês seguinte conta no mês do pagamento', () => {
+    const paidLater = { ...tx('expense_fixed', 9000, '2026-09-30'), paid_on: '2026-10-02' }
+    const rows = cashFlow({ months, transactions: [paidLater], invoices: [], currentBalance: 0, today: '2026-10-15' })
+    expect(rows.map((r) => r.outflow)).toEqual([0, 9000, 0])
   })
 
   it('transferências não afetam o caixa total', () => {

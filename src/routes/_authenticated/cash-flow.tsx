@@ -51,7 +51,7 @@ function CashFlowPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Fluxo de caixa</h1>
         <p className="text-sm text-muted-foreground">
-          O que entra e sai das suas contas. Compras no cartão aparecem no vencimento da fatura.
+          O que entra e sai, no mês certo. Compras no cartão aparecem no mês do vencimento da fatura.
         </p>
       </div>
 
@@ -137,8 +137,14 @@ function CashFlowPage() {
                   {format(parseISO(r.month), 'MMMM yyyy', { locale: ptBR })}
                   {r.month === currentMonthKey() && <span className="ml-2 text-xs text-muted-foreground">atual</span>}
                 </td>
-                <td className={cn('px-4 py-2.5 text-right tabular-nums', r.inflow > 0 && 'text-income')}>{signed(r.inflow)}</td>
-                <td className={cn('px-4 py-2.5 text-right tabular-nums', r.outflow > 0 && 'text-expense')}>{signed(-r.outflow)}</td>
+                <td className={cn('px-4 py-2.5 text-right tabular-nums', r.inflow > 0 && 'text-income')}>
+                  {signed(r.inflow)}
+                  {r.overdueInflow > 0 && <Overdue label="a receber" value={r.overdueInflow} />}
+                </td>
+                <td className={cn('px-4 py-2.5 text-right tabular-nums', r.outflow > 0 && 'text-expense')}>
+                  {signed(-r.outflow)}
+                  {r.overdueOutflow > 0 && <Overdue label="em atraso" value={r.overdueOutflow} />}
+                </td>
                 <td className={cn('px-4 py-2.5 text-right font-medium tabular-nums', r.net < 0 ? 'text-expense' : 'text-income')}>
                   {signed(r.net)}
                 </td>
@@ -162,8 +168,18 @@ function CashFlowPage() {
         </table>
       </Card>
       <p className="text-xs text-muted-foreground">
-        O saldo previsto parte do saldo de hoje e soma as contas pendentes, as recorrências e as faturas em aberto.
+        Cada valor fica no mês em que foi pago ou recebido; o que ainda não foi pago fica no mês do vencimento (mesmo atrasado). O saldo
+        previsto parte do saldo de hoje e soma as contas pendentes, as recorrências e as faturas em aberto; o que está atrasado entra no mês
+        atual, porque ainda vai sair da conta.
       </p>
     </div>
+  )
+}
+
+function Overdue({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="block text-[11px] font-normal text-amber-700 dark:text-amber-400">
+      {formatCents(value)} {label}
+    </span>
   )
 }
