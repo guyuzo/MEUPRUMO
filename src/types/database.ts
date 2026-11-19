@@ -137,6 +137,10 @@ export interface Transaction {
   payment_method: PaymentMethod | null
   /** Fatura escolhida manualmente (mês de referência); null = automática. */
   invoice_month: string | null
+  /** Lote de importação de fatura que criou o lançamento. */
+  import_batch_id?: string | null
+  /** Id da linha no arquivo do banco; "proj:…" = parcela futura prevista a partir de uma fatura importada. */
+  external_id?: string | null
   created_by: string | null
   created_at: string
   updated_at: string

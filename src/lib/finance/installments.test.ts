@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lastInstallmentMonth, parseInstallment } from './installments'
+import { lastInstallmentMonth, parseInstallment, upcomingInstallments, withInstallmentNumber } from './installments'
 
 describe('parseInstallment', () => {
   it.each([
@@ -49,5 +49,28 @@ describe('lastInstallmentMonth', () => {
   it('soma as parcelas que faltam, virando o ano', () => {
     expect(lastInstallmentMonth('2026-10-01', { current: 3, total: 12 })).toBe('2027-07-01')
     expect(lastInstallmentMonth('2026-10-01', { current: 12, total: 12 })).toBe('2026-10-01')
+  })
+})
+
+describe('withInstallmentNumber / upcomingInstallments', () => {
+  it.each([
+    ['MAGAZINE LUIZA PARC 02/10', 3, 'MAGAZINE LUIZA PARC 03/10'],
+    ['Loja X Parc. 03 de 12', 10, 'Loja X Parc. 10 de 12'],
+    ['Notebook Dell (1/10)', 2, 'Notebook Dell (2/10)'],
+    ['MAGALU 02/10 SAO PAULO BR', 3, 'MAGALU 03/10 SAO PAULO BR'],
+    ['2ª parcela de 5 Sofa', 3, '3ª parcela de 5 Sofa'],
+    ['Loja 01 de 02', 2, 'Loja 02 de 02'],
+  ])('%s → parcela %i', (text, n, expected) => {
+    expect(withInstallmentNumber(text, n)).toBe(expected)
+    expect(parseInstallment(expected)!.current).toBe(n)
+  })
+
+  it('lista as parcelas que faltam, mês a mês', () => {
+    expect(upcomingInstallments('LOJA 03/05')).toEqual([
+      { number: 4, description: 'LOJA 04/05', monthsAhead: 1 },
+      { number: 5, description: 'LOJA 05/05', monthsAhead: 2 },
+    ])
+    expect(upcomingInstallments('LOJA 05/05')).toEqual([])
+    expect(upcomingInstallments('IFOOD')).toEqual([])
   })
 })

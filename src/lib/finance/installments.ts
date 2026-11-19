@@ -34,22 +34,56 @@ const PATTERNS: { re: RegExp; check?: (text: string, match: RegExpMatchArray) =>
   },
 ]
 
-export function parseInstallment(description: string): InstallmentInfo | null {
-  const text = description.trim()
+function matchInstallment(text: string) {
   for (const { re, check } of PATTERNS) {
     const match = text.match(re)
     if (!match || (check && !check(text, match))) continue
     const current = Number(match[1])
     const total = Number(match[2])
     if (!(current >= 1 && total >= 2 && current <= total && total <= MAX_INSTALLMENTS)) continue
-    const base = (text.slice(0, match.index) + ' ' + text.slice(match.index! + match[0].length))
-      .replace(/\s*[-–]\s*$/, '')
-      .replace(/^\s*[-–]\s*/, '')
-      .replace(/\s{2,}/g, ' ')
-      .trim()
-    return { current, total, base: base || text }
+    return { match, current, total }
   }
   return null
+}
+
+export function parseInstallment(description: string): InstallmentInfo | null {
+  const text = description.trim()
+  const found = matchInstallment(text)
+  if (!found) return null
+  const { match, current, total } = found
+  const base = (text.slice(0, match.index) + ' ' + text.slice(match.index! + match[0].length))
+    .replace(/\s*[-–]\s*$/, '')
+    .replace(/^\s*[-–]\s*/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+  return { current, total, base: base || text }
+}
+
+/**
+ * A mesma descrição com outro número de parcela, no formato que o banco usa
+ * ("LOJA PARC 03/10" → "LOJA PARC 04/10"; mantém o zero à esquerda).
+ */
+export function withInstallmentNumber(description: string, n: number): string {
+  const text = description.trim()
+  const found = matchInstallment(text)
+  if (!found) return text
+  const { match } = found
+  // Em todos os padrões o primeiro número do trecho é o da parcela atual.
+  const piece = match[0].replace(/\d{1,2}/, (digits) => String(n).padStart(digits.length, '0'))
+  return text.slice(0, match.index) + piece + text.slice(match.index! + match[0].length)
+}
+
+/**
+ * Parcelas que ainda vão vir depois desta: número, descrição e quantos meses à frente (1 = próxima fatura).
+ * Ex.: "LOJA 03/05" → 04/05 (+1) e 05/05 (+2).
+ */
+export function upcomingInstallments(description: string): { number: number; description: string; monthsAhead: number }[] {
+  const info = parseInstallment(description)
+  if (!info) return []
+  return Array.from({ length: info.total - info.current }, (_, i) => {
+    const number = info.current + i + 1
+    return { number, description: withInstallmentNumber(description, number), monthsAhead: i + 1 }
+  })
 }
 
 /** Mês (yyyy-MM-01) em que cai a última parcela, a partir do mês desta parcela. */

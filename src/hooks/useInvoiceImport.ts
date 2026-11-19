@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { addDays, format, parseISO } from 'date-fns'
 import { toast } from 'sonner'
 import { useHousehold } from '@/hooks/useHousehold'
 import { parseInstallment } from '@/lib/finance/installments'
+import { SIMILAR_WINDOW_DAYS } from '@/lib/import/similar'
 import { normalizeDescription } from '@/lib/import/statement'
 import { supabase } from '@/lib/supabase'
 
@@ -44,20 +46,60 @@ export function useCategorySuggestions(enabled: boolean) {
   })
 }
 
-/** Lançamentos já existentes no cartão no período do arquivo, para marcar duplicados. */
+/** Prefixo do external_id das parcelas futuras criadas a partir de uma fatura importada. */
+export const PROJECTED_PREFIX = 'proj:'
+
+export const isProjected = (externalId: string | null | undefined) => Boolean(externalId?.startsWith(PROJECTED_PREFIX))
+
+/**
+ * Chave de uma parcela (sem o valor: a 1ª parcela pode ter centavos a mais). Os bancos repetem a data
+ * da compra em todas as parcelas, então data + descrição base + "n/total" identifica a parcela.
+ */
+export function parcelKey(date: string, description: string) {
+  const parcel = parseInstallment(description)
+  return parcel ? `${date}|${normalizeDescription(description)}|${parcel.current}/${parcel.total}` : null
+}
+
+const shiftDay = (date: string, days: number) => format(addDays(parseISO(date), days), 'yyyy-MM-dd')
+
+/** Lançamentos já existentes no cartão no período do arquivo (com folga), para marcar duplicados. */
 export async function fetchExistingKeys(cardId: string, from: string, to: string) {
   const { data, error } = await supabase
     .from('transactions')
-    .select('occurred_on, amount, description, external_id, kind')
+    .select('id, occurred_on, amount, description, external_id, kind, installment_plan_id, category_id, subcategory_id, household_member_id')
     .eq('card_id', cardId)
-    .gte('occurred_on', from)
-    .lte('occurred_on', to)
+    .in('kind', ['card_purchase', 'card_refund'])
+    .gte('occurred_on', shiftDay(from, -SIMILAR_WINDOW_DAYS))
+    .lte('occurred_on', shiftDay(to, SIMILAR_WINDOW_DAYS))
   if (error) throw error
+  // Candidatos a "mesmo valor": tudo menos as parcelas previstas (essas são tratadas pela parcela).
+  const rows = data
+    .filter((t) => !isProjected(t.external_id))
+    .map((t) => ({
+      id: t.id,
+      date: t.occurred_on,
+      description: t.description,
+      amount: t.kind === 'card_refund' ? -t.amount : t.amount,
+      inPlan: Boolean(t.installment_plan_id),
+      category_id: t.category_id as string | null,
+      subcategory_id: t.subcategory_id as string | null,
+      household_member_id: t.household_member_id as string | null,
+    }))
+  // Parcelas já no app: as previstas (de uma fatura anterior) são trocadas pela real; as reais são duplicadas.
+  const parcels = new Map<string, { id: string; projected: boolean }>()
+  for (const t of data) {
+    const key = t.kind === 'card_purchase' ? parcelKey(t.occurred_on, t.description) : null
+    if (key) parcels.set(key, { id: t.id, projected: isProjected(t.external_id) })
+  }
   return {
     keys: new Set(data.map((t) => duplicateKey(t.occurred_on, t.kind === 'card_refund' ? -t.amount : t.amount, t.description))),
     externalIds: new Set(data.map((t) => t.external_id).filter(Boolean) as string[]),
+    parcels,
+    rows,
   }
 }
+
+export type ExistingKeys = Awaited<ReturnType<typeof fetchExistingKeys>>
 
 /**
  * Chave para achar lançamento repetido. Inclui o número da parcela: na fatura, a parcela 3/10 vem
@@ -77,6 +119,10 @@ export interface ImportRow {
   category_id: string | null
   subcategory_id: string | null
   household_member_id: string | null
+  /** Fatura em que entra (parcelas futuras); sem isso, a fatura que está sendo importada. */
+  invoice_month?: string
+  /** Lançamento que esta linha substitui: parcela prevista ou gasto lançado à mão que a pessoa disse ser o mesmo. */
+  replaces?: string
 }
 
 export function useImportBatches(cardId: string | undefined) {
@@ -114,14 +160,17 @@ export function useInvoiceImportMutations() {
         p_rows: input.rows,
       })
       if (error) throw error
-      return data as { batch_id: string | null; inserted: number; skipped: number; total: number }
+      return data as { batch_id: string | null; inserted: number; skipped: number; total: number; projected?: number }
     },
     onSuccess: (result) => {
       refresh()
+      const projected = result.projected
+        ? ` ${result.projected} parcela${result.projected === 1 ? '' : 's'} futura${result.projected === 1 ? '' : 's'} lançada${result.projected === 1 ? '' : 's'} nas próximas faturas.`
+        : ''
       toast.success(
         result.inserted === 0
-          ? 'Nada novo: esses lançamentos já tinham sido importados.'
-          : `${result.inserted} lançamento${result.inserted === 1 ? '' : 's'} importado${result.inserted === 1 ? '' : 's'}${result.skipped ? ` (${result.skipped} já existia${result.skipped === 1 ? '' : 'm'})` : ''}.`,
+          ? `Nada novo: esses lançamentos já tinham sido importados.${projected}`
+          : `${result.inserted} lançamento${result.inserted === 1 ? '' : 's'} importado${result.inserted === 1 ? '' : 's'}${result.skipped ? ` (${result.skipped} já existia${result.skipped === 1 ? '' : 'm'})` : ''}.${projected}`,
       )
     },
     onError: () => toast.error('Não foi possível importar a fatura.'),

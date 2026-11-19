@@ -15,6 +15,7 @@ import { useCards } from '@/hooks/useCards'
 import { useMembers } from '@/hooks/useFamily'
 import { usePermission } from '@/hooks/useHousehold'
 import { useCategories, type CategoryWithSubs } from '@/hooks/usePlanning'
+import { isProjected } from '@/hooks/useInvoiceImport'
 import { useTransactionMutations } from '@/hooks/useTransactions'
 import { lastInstallmentMonth, parseInstallment } from '@/lib/finance/installments'
 import { PAYMENT_METHOD_LABEL, TX_KIND_LABEL } from '@/lib/finance/labels'
@@ -330,6 +331,7 @@ function TransactionRow({ tx, ctx }: { tx: Transaction; ctx: RowContext }) {
   // Linha de apoio embaixo do nome: o que não tem coluna própria.
   const meta = [
     installmentNote,
+    isProjected(tx.external_id) && 'prevista',
     !categorized && TX_KIND_LABEL[tx.kind],
     isTransfer && `${accountName(tx.bank_account_id)} → ${accountName(tx.destination_account_id)}`,
     onCard &&
