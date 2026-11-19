@@ -19,6 +19,8 @@ export interface Profile {
   id: string
   full_name: string
   avatar_url: string | null
+  /** Layout da tela Início (ver src/lib/dashboardLayout.ts); null = padrão. */
+  dashboard_layout?: unknown
   created_at: string
 }
 
